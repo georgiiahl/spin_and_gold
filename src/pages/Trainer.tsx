@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Action, HandFrequencies, SpotRange, Spot, SessionAnswer, TrainerCard } from '@/domain/types';
+import { Action, HandFrequencies, Spot, SessionAnswer, TrainerCard } from '@/domain/types';
 import { ALL_HANDS } from '@/domain/hands';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';

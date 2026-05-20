@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Action, HandFrequencies, SpotRange, Spot } from '@/domain/types';
-import { ALL_HANDS, getHandPosition } from '@/domain/hands';
+import { ALL_HANDS, HAND_MATRIX, getHandPosition } from '@/domain/hands';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 
@@ -57,7 +57,6 @@ function findBorderHands(range: SpotRange): string[] {
 }
 
 function getHandAt(row: number, col: number): string | null {
-  const { HAND_MATRIX } = require('@/domain/hands');
   if (row < 0 || row >= 13 || col < 0 || col >= 13) return null;
   return HAND_MATRIX[row][col];
 }

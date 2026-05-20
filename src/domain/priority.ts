@@ -1,4 +1,4 @@
-import { TrainerCard, HandFrequencies, Action } from '@/domain/types';
+import { TrainerCard, HandFrequencies } from '@/domain/types';
 
 /**
  * Smart Priority Engine

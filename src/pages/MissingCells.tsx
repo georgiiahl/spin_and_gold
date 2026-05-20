@@ -6,7 +6,6 @@ import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
-const ACTION_LABELS: Record<Action, string> = { fold: 'Fold', call: 'Call', raise: 'Raise', jam: 'Jam' };
 const ACTION_COLORS: Record<Action, string> = { fold: 'bg-fold', call: 'bg-call', raise: 'bg-raise', jam: 'bg-jam' };
 
 function getPrimaryAction(freq: HandFrequencies): Action {
