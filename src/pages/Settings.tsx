@@ -42,53 +42,53 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-4">
+    <div className="mx-auto max-w-2xl p-4">
       <h1 className="text-xl font-bold mb-4">Settings</h1>
 
       <div className="space-y-4">
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-semibold">Visual Mode</h2>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Flash duration (seconds)</span>
+            <span className="text-gray-700">Flash duration (seconds)</span>
             <input
               type="number"
               min={1}
               max={10}
               value={settings.flashDurationSec}
               onChange={(e) => update('flashDurationSec', Number(e.target.value))}
-              className="bg-gray-700 rounded px-2 py-1 w-24"
+               className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-semibold">Grading Speed Thresholds</h2>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Fast answer &lt; (ms)</span>
+            <span className="text-gray-700">Fast answer &lt; (ms)</span>
             <input
               type="number"
               min={200}
               value={settings.fastResponseMs}
               onChange={(e) => update('fastResponseMs', Number(e.target.value))}
-              className="bg-gray-700 rounded px-2 py-1 w-32"
+               className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Slow answer &gt; (ms)</span>
+            <span className="text-gray-700">Slow answer &gt; (ms)</span>
             <input
               type="number"
               min={1000}
               value={settings.slowResponseMs}
               onChange={(e) => update('slowResponseMs', Number(e.target.value))}
-              className="bg-gray-700 rounded px-2 py-1 w-32"
+               className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-semibold">Trainer Behavior</h2>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Show frequencies in feedback</span>
+            <span className="text-gray-700">Show frequencies in feedback</span>
             <input
               type="checkbox"
               checked={settings.showFrequenciesInFeedback}
@@ -96,7 +96,7 @@ export default function Settings() {
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Include trash hands in training</span>
+            <span className="text-gray-700">Include trash hands in training</span>
             <input
               type="checkbox"
               checked={settings.includeTrashHandsInTraining}
@@ -104,7 +104,7 @@ export default function Settings() {
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-300">Focus on mixed hands</span>
+            <span className="text-gray-700">Focus on mixed hands</span>
             <input
               type="checkbox"
               checked={settings.focusOnMixedHands}
@@ -118,21 +118,21 @@ export default function Settings() {
         <button
           onClick={handleSave}
           disabled={!hasChanges}
-          className="px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-40"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40"
         >
           {saved ? '✓ Saved' : 'Save'}
         </button>
         <button
           onClick={resetDefaults}
-          className="px-4 py-2 bg-gray-700 rounded-lg text-sm font-medium hover:bg-gray-600"
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           Reset Defaults
         </button>
       </div>
 
-      {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+      {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
 
-      <Link to="/" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Dashboard
       </Link>
     </div>

@@ -51,12 +51,12 @@ export default function SpotList() {
   const groupedEntries = Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
 
   return (
-    <div className="p-4">
+    <div className="mx-auto max-w-4xl p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Spots</h1>
         <Link
           to="/spots/new"
-          className="px-3 py-2 bg-blue-600 rounded-lg text-sm font-medium hover:bg-blue-500"
+          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
         >
           + New
         </Link>
@@ -67,7 +67,7 @@ export default function SpotList() {
         <select
           value={filterFormat}
           onChange={(e) => setFilterFormat(e.target.value as GameFormat | 'all')}
-          className="bg-gray-800 rounded px-2 py-1 text-sm"
+          className="bg-white border border-gray-200 rounded px-2 py-1 text-sm"
         >
           <option value="all">All formats</option>
           <option value="3max">3-max</option>
@@ -78,7 +78,7 @@ export default function SpotList() {
           placeholder="Stack bb"
           value={filterStack}
           onChange={(e) => setFilterStack(e.target.value)}
-          className="bg-gray-800 rounded px-2 py-1 text-sm w-24"
+          className="bg-white border border-gray-200 rounded px-2 py-1 text-sm w-24"
         />
       </div>
 
@@ -88,7 +88,7 @@ export default function SpotList() {
       ) : (
         <div className="flex flex-col gap-2">
           {groupedEntries.map(([category, categorySpots]) => (
-            <div key={category} className="rounded-xl border border-gray-800 bg-gray-900/50 p-3">
+            <div key={category} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
                 <div className="font-semibold">{category}</div>
                 <div className="text-xs text-gray-500">
@@ -97,14 +97,14 @@ export default function SpotList() {
               </div>
               <div className="flex flex-col gap-2">
                 {categorySpots.map((spot) => (
-                  <div key={spot.id} className="bg-gray-800 rounded-lg p-3">
+                  <div key={spot.id} className="bg-white border border-gray-200 rounded-lg p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div
                         className="cursor-pointer flex-1"
                         onClick={() => navigate(`/spots/${spot.id}/edit`)}
                       >
                         <div className="font-medium">{spot.title}</div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-gray-500">
                           {spot.format} · {spot.effectiveStackBb}bb · {spot.actingPosition}
                           {spot.history.length > 0 &&
                             ' · ' + spot.history.map((h) => `${h.position} ${h.action}`).join(' → ')}
@@ -113,14 +113,14 @@ export default function SpotList() {
                       <div className="flex gap-1">
                         <button
                           onClick={() => handleDuplicate(spot)}
-                          className="text-xs px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                          className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
                           title="Duplicate"
                         >
                           ⧉
                         </button>
                         <button
                           onClick={() => handleDelete(spot.id)}
-                          className="text-xs px-2 py-1 bg-red-900/50 rounded hover:bg-red-800"
+                          className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
                           title="Delete"
                         >
                           ✕
@@ -130,19 +130,19 @@ export default function SpotList() {
                     <div className="mt-2 flex gap-2 text-xs">
                       <button
                         onClick={() => navigate(`/spots/${spot.id}/range`)}
-                        className="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-gray-700 hover:bg-gray-100"
                       >
                         Chart
                       </button>
                       <button
                         onClick={() => navigate(`/study/${spot.id}`)}
-                        className="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-gray-700 hover:bg-gray-100"
                       >
                         Study
                       </button>
                       <button
                         onClick={() => navigate(`/train/${spot.id}`)}
-                        className="px-2 py-1 bg-blue-700 rounded hover:bg-blue-600"
+                        className="rounded bg-blue-600 px-2 py-1 text-white hover:bg-blue-500"
                       >
                         Train
                       </button>
@@ -155,7 +155,7 @@ export default function SpotList() {
         </div>
       )}
 
-      <Link to="/" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Dashboard
       </Link>
     </div>

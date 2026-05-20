@@ -1,5 +1,8 @@
 import { TrainerCard, HandFrequencies } from '@/domain/types';
 
+const RECENT_HAND_PENALTY = 0.1;
+const RECENT_SPOT_PENALTY = 0.5;
+
 /**
  * Smart Priority Engine
  * 
@@ -31,7 +34,7 @@ export function calculatePriority(card: TrainerCard): number {
 function calculateUrgency(card: TrainerCard, now: number): number {
   const { phase, dueAt } = card.memory;
 
-  if (phase === 'new') return 5; // New cards have moderate-high priority
+  if (phase === 'new') return 3; // New cards have moderate priority
 
   if (!dueAt) return 1;
 
@@ -86,7 +89,7 @@ function calculateTrashSuppression(card: TrainerCard): number {
 }
 
 function calculateNovelty(card: TrainerCard): number {
-  if (card.memory.phase === 'new') return 1.5;
+  if (card.memory.phase === 'new') return 1.3;
   if (card.memory.phase === 'learning') return 1.2;
   return 1;
 }
@@ -105,17 +108,33 @@ function calculateSpeedFactor(card: TrainerCard): number {
  * Pick next card from a list sorted by priority (descending).
  * Adds slight randomization to avoid always showing the same card.
  */
-export function pickNextCard(cards: TrainerCard[]): TrainerCard | null {
+export function pickNextCard(
+  cards: TrainerCard[],
+  recentHands: string[] = [],
+  recentSpotIds: string[] = []
+): TrainerCard | null {
   if (cards.length === 0) return null;
 
+  const recentHandsSet = new Set(recentHands);
+  const recentSpotIdsSet = new Set(recentSpotIds);
+
   // Score all cards
-  const scored = cards.map((card) => ({ card, score: calculatePriority(card) }));
+  const scored = cards.map((card) => {
+    let score = calculatePriority(card);
+    if (recentHandsSet.has(card.hand)) {
+      score *= RECENT_HAND_PENALTY;
+    }
+    if (recentSpotIdsSet.has(card.spotId)) {
+      score *= RECENT_SPOT_PENALTY;
+    }
+    return { card, score };
+  });
 
   // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick from top 5 with weighted random to add variety
-  const topN = scored.slice(0, Math.min(5, scored.length));
+  // Pick from the top candidates with weighted random to add variety
+  const topN = scored.slice(0, Math.min(10, scored.length));
   const totalScore = topN.reduce((sum, s) => sum + s.score, 0);
 
   if (totalScore === 0) return topN[0].card;

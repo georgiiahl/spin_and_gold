@@ -68,25 +68,25 @@ export default function MissingCells() {
     return f && f[action] > 0;
   }).length;
 
-  if (!spot) return <div className="p-4 text-gray-400">Loading...</div>;
+  if (!spot) return <div className="p-4 text-gray-500">Loading...</div>;
 
   const hasStarted = hiddenHands.size > 0;
 
   return (
-    <div className="p-4">
+    <div className="mx-auto max-w-5xl p-4">
       <div className="mb-3">
         <h1 className="text-lg font-bold">Missing Cells</h1>
-        <div className="text-xs text-gray-400">{spot.title}</div>
+        <div className="text-xs text-gray-500">{spot.title}</div>
       </div>
 
       {!hasStarted && (
         <div className="text-center mt-8">
           <div className="mb-4">
-            <label className="text-sm text-gray-400">Cells to hide: </label>
+            <label className="text-sm text-gray-500">Cells to hide: </label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(Number(e.target.value))}
-              className="bg-gray-800 rounded px-2 py-1 text-sm ml-2"
+              className="bg-white border border-gray-200 rounded px-2 py-1 text-sm ml-2"
             >
               {[5, 10, 15, 20, 30, 50].map((n) => (
                 <option key={n} value={n}>{n}</option>
@@ -95,7 +95,7 @@ export default function MissingCells() {
           </div>
           <button
             onClick={startRound}
-            className="px-6 py-3 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-500"
+            className="rounded-xl bg-blue-600 px-6 py-3 text-lg font-bold text-white hover:bg-blue-500"
           >
             Start
           </button>
@@ -130,7 +130,7 @@ export default function MissingCells() {
                     <div
                       key={`${r}-${c}`}
                       onClick={() => handleCellAnswer(hand, 'raise')}
-                      className="aspect-square flex items-center justify-center text-[7px] font-medium rounded-[2px] cursor-pointer bg-gray-600 ring-1 ring-yellow-400/50 hover:bg-gray-500"
+                        className="flex aspect-square cursor-pointer items-center justify-center rounded-[2px] border border-gray-300 bg-gray-100 text-[7px] font-medium text-gray-600 ring-1 ring-yellow-500/50 hover:bg-gray-200"
                     >
                       ?
                     </div>
@@ -153,7 +153,7 @@ export default function MissingCells() {
                 // Normal cell
                 const color = freq && (freq.fold + freq.call + freq.raise + freq.jam) > 0
                   ? ACTION_COLORS[primary]
-                  : 'bg-gray-700';
+                  : 'bg-gray-50 border border-gray-200';
                 return (
                   <div
                     key={`${r}-${c}`}
@@ -169,13 +169,13 @@ export default function MissingCells() {
           {/* Controls */}
           {!revealed && (
             <div className="flex gap-2">
-              <div className="text-xs text-gray-400 flex-1">
+              <div className="text-xs text-gray-500 flex-1">
                 Tap hidden cells to cycle actions. {Object.keys(answers).length}/{hiddenHands.size} answered
               </div>
               <button
                 onClick={checkAnswers}
                 disabled={Object.keys(answers).length < hiddenHands.size}
-                className="px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-40"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40"
               >
                 Check
               </button>
@@ -189,7 +189,7 @@ export default function MissingCells() {
               </div>
               <button
                 onClick={startRound}
-                className="px-6 py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-500"
+                className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-500"
               >
                 New Round
               </button>
@@ -198,7 +198,7 @@ export default function MissingCells() {
         </>
       )}
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-400 hover:text-white text-center">
+      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900 text-center">
         \u2190 Back
       </Link>
     </div>

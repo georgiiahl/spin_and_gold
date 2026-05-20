@@ -26,7 +26,7 @@ export default function GlobalStats() {
     });
   }, []);
 
-  if (loading) return <div className="p-4 text-gray-400">Loading...</div>;
+  if (loading) return <div className="p-4 text-gray-500">Loading...</div>;
 
   const stats = computeSpotStats(sessions, cards);
   const hardestHands = getHardestHands(sessions);
@@ -36,13 +36,13 @@ export default function GlobalStats() {
     <div className="p-4">
       <div className="mb-4">
         <h1 className="text-xl font-bold">Global Statistics</h1>
-        <div className="text-xs text-gray-400">All spots</div>
+        <div className="text-xs text-gray-500">All spots</div>
       </div>
 
       <div className="grid gap-4">
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Overview</h2>
-          <div className="space-y-2 text-sm text-gray-300">
+          <div className="space-y-2 text-sm text-gray-700">
             <div>Total cards: {cards.length}</div>
             <div>Total answers: {sessions.length}</div>
             <div>Total recorded errors: {totalErrors}</div>
@@ -50,41 +50,41 @@ export default function GlobalStats() {
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Accuracy by action</h2>
           <div className="space-y-2 text-sm">
             {Object.entries(stats.accuracyByAction).map(([action, actionStats]) => (
               <div key={action} className="flex items-center justify-between gap-3">
-                <span className="capitalize text-gray-300">{action}</span>
-                <span className="text-gray-400">{actionStats.correct}/{actionStats.attempts}</span>
+                <span className="capitalize text-gray-700">{action}</span>
+                <span className="text-gray-500">{actionStats.correct}/{actionStats.attempts}</span>
                 <span>{formatPercent(actionStats.accuracy)}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Card phases</h2>
           <div className="space-y-2 text-sm">
             {Object.entries(stats.phaseDistribution).map(([phase, count]) => (
               <div key={phase} className="flex items-center justify-between">
-                <span className="capitalize text-gray-300">{phase}</span>
+                <span className="capitalize text-gray-700">{phase}</span>
                 <span>{count}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Hardest hands</h2>
           {hardestHands.length === 0 ? (
-            <div className="text-sm text-gray-400">Need at least 3 attempts on a hand.</div>
+            <div className="text-sm text-gray-500">Need at least 3 attempts on a hand.</div>
           ) : (
             <div className="space-y-2 text-sm">
               {hardestHands.map((hand) => (
                 <div key={hand.hand} className="flex items-center justify-between gap-3">
                   <span className="font-medium">{hand.hand}</span>
-                  <span className="text-gray-400">{hand.correct}/{hand.attempts}</span>
+                  <span className="text-gray-500">{hand.correct}/{hand.attempts}</span>
                   <span>{formatPercent(hand.correctRate)}</span>
                 </div>
               ))}
@@ -93,7 +93,7 @@ export default function GlobalStats() {
         </section>
       </div>
 
-      <Link to="/" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Dashboard
       </Link>
     </div>

@@ -70,23 +70,23 @@ export default function Dashboard() {
   }, [dueCardsBySpot, spots]);
 
   return (
-    <div className="p-4">
+    <div className="mx-auto max-w-4xl p-4">
       <h1 className="text-2xl font-bold mb-6">Spin & Gold Trainer</h1>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-gray-800 rounded-lg p-3">
-          <div className="text-xs text-gray-400">Total spots</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="text-xs text-gray-500">Total spots</div>
           <div className="text-lg font-semibold">{spots.length}</div>
         </div>
-        <div className="bg-gray-800 rounded-lg p-3">
-          <div className="text-xs text-gray-400">Trained today</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="text-xs text-gray-500">Trained today</div>
           <div className="text-lg font-semibold">{todaySessions.length}</div>
         </div>
-        <div className="bg-gray-800 rounded-lg p-3">
-          <div className="text-xs text-gray-400">Accuracy today</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="text-xs text-gray-500">Accuracy today</div>
           <div className="text-lg font-semibold">{accuracyToday}%</div>
         </div>
-        <div className="bg-gray-800 rounded-lg p-3">
-          <div className="text-xs text-gray-400">Due cards</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="text-xs text-gray-500">Due cards</div>
           <div className="text-lg font-semibold">{dueCardsCount}</div>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function Dashboard() {
         <div className="mb-4">
           <div className="mb-2">
             <div className="font-semibold">Choose training category</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-500">
               Train one spot group at a time instead of mixing unrelated stacks and spots.
             </div>
           </div>
@@ -104,9 +104,9 @@ export default function Dashboard() {
               <Link
                 key={category.name}
                 to={`/train?category=${encodeURIComponent(category.name)}`}
-                className="block p-4 bg-blue-600 rounded-lg hover:bg-blue-500 transition"
+                className="block rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
               >
-                <div className="font-semibold">{category.name}</div>
+                  <div className="font-semibold">{category.name}</div>
                 <div className="text-sm text-blue-100">
                   {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
                   {category.dueCards === 1 ? '' : 's'}
@@ -118,7 +118,7 @@ export default function Dashboard() {
       )}
 
       {categoryCards.length === 0 && (
-        <div className="mb-4 rounded-lg border border-dashed border-gray-700 p-4 text-sm text-gray-400">
+        <div className="mb-4 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
           Create your first spot category to start training from the dashboard.
         </div>
       )}
@@ -126,31 +126,31 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3">
         <Link
           to="/spots"
-          className="block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Spots</div>
-          <div className="text-sm text-gray-400">Manage your preflop spots</div>
+          <div className="text-sm text-gray-500">Manage your preflop spots</div>
         </Link>
         <Link
           to="/stats"
-          className="block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Stats</div>
-          <div className="text-sm text-gray-400">Review training performance</div>
+          <div className="text-sm text-gray-500">Review training performance</div>
         </Link>
         <Link
           to="/settings"
-          className="block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Settings</div>
-          <div className="text-sm text-gray-400">Trainer and visual preferences</div>
+          <div className="text-sm text-gray-500">Trainer and visual preferences</div>
         </Link>
         <Link
           to="/import-export"
-          className="block p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Import / Export</div>
-          <div className="text-sm text-gray-400">Backup and restore your data</div>
+          <div className="text-sm text-gray-500">Backup and restore your data</div>
         </Link>
       </div>
     </div>
