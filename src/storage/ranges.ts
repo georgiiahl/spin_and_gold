@@ -16,3 +16,8 @@ export async function deleteRange(spotId: string): Promise<void> {
   const db = await getDB();
   await db.delete('ranges', spotId);
 }
+
+export async function getAllRanges(): Promise<Array<{ spotId: string; range: SpotRange }>> {
+  const db = await getDB();
+  return db.getAll('ranges');
+}

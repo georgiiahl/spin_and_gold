@@ -8,6 +8,7 @@ import { saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
 import { createNewCard, scheduleCard, determineGrade } from '@/domain/memory';
 import { pickNextCard } from '@/domain/priority';
+import { loadSettings } from '@/storage/settings';
 
 const ACTION_LABELS: Record<Action, string> = {
   fold: 'Fold',
@@ -37,6 +38,7 @@ export default function Trainer() {
   const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef<number>(0);
+  const settings = loadSettings();
 
   useEffect(() => {
     if (!id) return;
@@ -86,7 +88,15 @@ export default function Trainer() {
     setLoading(false);
 
     // Pick first card
-    const next = pickNextCard(allCards);
+    const trainableCards = allCards.filter((card) => {
+      if (!settings.includeTrashHandsInTraining) {
+        return !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0);
+      }
+      return true;
+    });
+    const mixedCards = trainableCards.filter((card) => Object.values(card.frequencies).filter((v) => v > 0).length > 1);
+    const initialPool = settings.focusOnMixedHands && mixedCards.length > 0 ? mixedCards : trainableCards;
+    const next = pickNextCard(initialPool.length > 0 ? initialPool : allCards);
     if (next) {
       setCurrentCard(next);
       startTimeRef.current = Date.now();
@@ -94,7 +104,20 @@ export default function Trainer() {
   }
 
   function pickNext() {
-    const next = pickNextCard(cards);
+    const pool = cards.filter((card) => {
+      if (!settings.includeTrashHandsInTraining) {
+        const onlyFold =
+          card.frequencies.fold === 1 &&
+          card.frequencies.call === 0 &&
+          card.frequencies.raise === 0 &&
+          card.frequencies.jam === 0;
+        if (onlyFold) return false;
+      }
+      return true;
+    });
+    const mixedOnly = pool.filter((card) => Object.values(card.frequencies).filter((v) => v > 0).length > 1);
+    const candidates = settings.focusOnMixedHands && mixedOnly.length > 0 ? mixedOnly : pool;
+    const next = pickNextCard(candidates.length > 0 ? candidates : cards);
     if (next) {
       setCurrentCard(next);
       startTimeRef.current = Date.now();
@@ -126,7 +149,10 @@ export default function Trainer() {
     if (isCorrect) setCorrectCount((c) => c + 1);
 
     // Grade and schedule
-    const grade = determineGrade(isCorrect, isMixedCorrect, responseTimeMs);
+    const grade = determineGrade(isCorrect, isMixedCorrect, responseTimeMs, {
+      fastMs: settings.fastResponseMs,
+      slowMs: settings.slowResponseMs,
+    });
     const updatedCard = scheduleCard(currentCard, grade);
 
     // Update stats
@@ -257,16 +283,18 @@ export default function Trainer() {
                 <span className="text-gray-400">Primary: </span>
                 <span className="font-medium">{ACTION_LABELS[feedback.primaryAction]}</span>
               </div>
-              <div>
-                <span className="text-gray-400">Frequencies: </span>
-                <div className="mt-1">
-                  {ACTIONS.filter((a) => feedback.frequencies[a] > 0).map((a) => (
-                    <span key={a} className={`inline-block mr-2 text-${a}`}>
-                      {ACTION_LABELS[a]} {(feedback.frequencies[a] * 100).toFixed(0)}%
-                    </span>
-                  ))}
+              {settings.showFrequenciesInFeedback && (
+                <div>
+                  <span className="text-gray-400">Frequencies: </span>
+                  <div className="mt-1">
+                    {ACTIONS.filter((a) => feedback.frequencies[a] > 0).map((a) => (
+                      <span key={a} className={`inline-block mr-2 text-${a}`}>
+                        {ACTION_LABELS[a]} {(feedback.frequencies[a] * 100).toFixed(0)}%
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <button

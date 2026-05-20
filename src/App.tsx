@@ -10,6 +10,8 @@ import BorderTrainer from '@/pages/BorderTrainer';
 import SpotStats from '@/pages/SpotStats';
 import GlobalStats from '@/pages/GlobalStats';
 import StudyMode from '@/pages/StudyMode';
+import ImportExport from '@/pages/ImportExport';
+import Settings from '@/pages/Settings';
 
 export default function App() {
   return (
@@ -22,11 +24,14 @@ export default function App() {
         <Route path="/spots/:id/range" element={<ChartEditor />} />
         <Route path="/spots/:id/stats" element={<SpotStats />} />
         <Route path="/spots/:id/study" element={<StudyMode />} />
+        <Route path="/study/:id" element={<StudyMode />} />
         <Route path="/train/:id" element={<Trainer />} />
         <Route path="/visual/flash/:id" element={<FlashRange />} />
         <Route path="/visual/missing/:id" element={<MissingCells />} />
         <Route path="/visual/border/:id" element={<BorderTrainer />} />
         <Route path="/stats" element={<GlobalStats />} />
+        <Route path="/import-export" element={<ImportExport />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </div>
   );

@@ -5,6 +5,7 @@ import { ALL_HANDS } from '@/domain/hands';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 import RangeMatrix from '@/components/RangeMatrix';
+import { loadSettings } from '@/storage/settings';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const ACTION_LABELS: Record<Action, string> = { fold: 'Fold', call: 'Call', raise: 'Raise', jam: 'Jam' };
@@ -17,7 +18,7 @@ export default function FlashRange() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [range, setRange] = useState<SpotRange>({});
   const [phase, setPhase] = useState<Phase>('ready');
-  const [flashDuration, setFlashDuration] = useState(3);
+  const [flashDuration, setFlashDuration] = useState(() => loadSettings().flashDurationSec);
   const [question, setQuestion] = useState<Question | null>(null);
   const [result, setResult] = useState<'correct' | 'wrong' | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
