@@ -182,7 +182,9 @@ function parseHandCards(hand: string): [ParsedCard, ParsedCard] {
     ];
   }
 
-  const secondSuit = SUITS.find((suit) => suit !== firstSuit) ?? 'heart';
+  const secondSuit = SUITS[(seed + 1) % SUITS.length] === firstSuit
+    ? SUITS[(seed + 2) % SUITS.length]
+    : SUITS[(seed + 1) % SUITS.length];
   return [
     { rank: firstRank, suit: firstSuit },
     { rank: secondRank, suit: modifier === 'o' || firstRank === secondRank ? secondSuit : firstSuit },
