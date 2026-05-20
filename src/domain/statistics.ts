@@ -105,7 +105,7 @@ export function getErrorHeatmap(sessions: SessionAnswer[]): Map<string, number> 
   const heatmap = new Map<string, number>();
 
   for (const session of sessions) {
-    if (session.isCorrect && !session.errorType) continue;
+    if (session.isCorrect || !session.errorType) continue;
     heatmap.set(session.hand, (heatmap.get(session.hand) ?? 0) + 1);
   }
 
