@@ -1,8 +1,15 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Action, HandFrequencies, Spot, SessionAnswer, TrainerCard } from '@/domain/types';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import {
+  Action,
+  HandFrequencies,
+  Spot,
+  SessionAnswer,
+  TrainerCard,
+  normalizeSpotCategory,
+} from '@/domain/types';
 import { ALL_HANDS } from '@/domain/hands';
-import { getSpot } from '@/storage/spots';
+import { getSpot, getSpotsByCategory } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 import { saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
@@ -31,7 +38,9 @@ type FeedbackState = {
 
 export default function Trainer() {
   const { id } = useParams<{ id: string }>();
-  const [spot, setSpot] = useState<Spot | null>(null);
+  const [searchParams] = useSearchParams();
+  const category = normalizeSpotCategory(searchParams.get('category') ?? undefined);
+  const [spots, setSpots] = useState<Spot[]>([]);
   const [cards, setCards] = useState<TrainerCard[]>([]);
   const [currentCard, setCurrentCard] = useState<TrainerCard | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
@@ -40,44 +49,61 @@ export default function Trainer() {
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef<number>(0);
   const settings = useMemo(() => loadSettings(), []);
+  const currentSpot = useMemo(
+    () => spots.find((spot) => spot.id === currentCard?.spotId) ?? spots[0] ?? null,
+    [currentCard?.spotId, spots]
+  );
 
   useEffect(() => {
-    if (!id) return;
     initTrainer();
-  }, [id]);
+  }, [id, category]);
 
   async function initTrainer() {
-    if (!id) return;
-    const [s, range, existingCards] = await Promise.all([
-      getSpot(id),
-      getRange(id),
-      getCardsBySpot(id),
-    ]);
+    setLoading(true);
+    setSpots([]);
+    setCards([]);
+    setCurrentCard(null);
+    setFeedback(null);
+    setSessionCount(0);
+    setCorrectCount(0);
 
-    if (!s || !range) {
+    const selectedSpots = id
+      ? [await getSpot(id)].filter((spot): spot is Spot => Boolean(spot))
+      : category
+        ? await getSpotsByCategory(category)
+        : [];
+
+    if (selectedSpots.length === 0) {
       setLoading(false);
       return;
     }
-    setSpot(s);
+    setSpots(selectedSpots);
 
-    // Sync cards with range: create missing, update frequencies
-    const cardMap = new Map(existingCards.map((c) => [c.hand, c]));
     const allCards: TrainerCard[] = [];
     const newCards: TrainerCard[] = [];
 
-    for (const hand of ALL_HANDS) {
-      const freq = range[hand];
-      if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
+    for (const selectedSpot of selectedSpots) {
+      const [range, existingCards] = await Promise.all([
+        getRange(selectedSpot.id),
+        getCardsBySpot(selectedSpot.id),
+      ]);
 
-      const existing = cardMap.get(hand);
-      if (existing) {
-        // Update frequencies if changed
-        existing.frequencies = freq;
-        allCards.push(existing);
-      } else {
-        const card = createNewCard(id, hand, freq);
-        allCards.push(card);
-        newCards.push(card);
+      if (!range) continue;
+
+      const cardMap = new Map(existingCards.map((card) => [card.hand, card]));
+      for (const hand of ALL_HANDS) {
+        const freq = range[hand];
+        if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
+
+        const existing = cardMap.get(hand);
+        if (existing) {
+          existing.frequencies = freq;
+          allCards.push(existing);
+        } else {
+          const card = createNewCard(selectedSpot.id, hand, freq);
+          allCards.push(card);
+          newCards.push(card);
+        }
       }
     }
 
@@ -122,7 +148,7 @@ export default function Trainer() {
   }
 
   const handleAnswer = useCallback(async (action: Action) => {
-    if (!currentCard || !id) return;
+    if (!currentCard) return;
     const freq = currentCard.frequencies;
     const responseTimeMs = Date.now() - startTimeRef.current;
 
@@ -173,7 +199,7 @@ export default function Trainer() {
 
     // Save session
     const answer: SessionAnswer = {
-      spotId: id,
+      spotId: currentCard.spotId,
       hand: currentCard.hand,
       selectedAction: action,
       correctActions,
@@ -185,16 +211,16 @@ export default function Trainer() {
       timestamp: Date.now(),
     };
     await saveSession(answer);
-  }, [currentCard, id]);
+  }, [currentCard, settings.fastResponseMs, settings.slowResponseMs]);
 
   if (loading) {
     return <div className="p-4 text-gray-400">Loading...</div>;
   }
 
-  if (!spot) {
+  if (!currentSpot) {
     return (
       <div className="p-4">
-        <p className="text-red-400">Spot not found.</p>
+        <p className="text-red-400">{category ? 'Category not found.' : 'Spot not found.'}</p>
         <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
       </div>
     );
@@ -204,7 +230,7 @@ export default function Trainer() {
     return (
       <div className="p-4">
         <p className="text-yellow-500">No hands in range. Fill the chart first.</p>
-        <Link to={`/spots/${id}/range`} className="text-blue-400 text-sm mt-2 block">
+        <Link to={`/spots/${currentSpot.id}/range`} className="text-blue-400 text-sm mt-2 block">
           Open Chart Editor
         </Link>
       </div>
@@ -215,7 +241,9 @@ export default function Trainer() {
     <div className="p-4 flex flex-col min-h-screen">
       {/* Session stats */}
       <div className="mb-2 flex justify-between items-center">
-        <span className="text-xs text-gray-500">{spot.format} · {spot.actingPosition}</span>
+        <span className="text-xs text-gray-500">
+          {category ? `${category} · ${currentSpot.title}` : `${currentSpot.format} · ${currentSpot.actingPosition}`}
+        </span>
         <span className="text-xs text-gray-500">
           {correctCount}/{sessionCount}
           {sessionCount > 0 && ` (${Math.round((correctCount / sessionCount) * 100)}%)`}
@@ -224,10 +252,10 @@ export default function Trainer() {
 
       {/* Visual poker table */}
       <PokerTable
-        format={spot.format}
-        actingPosition={spot.actingPosition}
-        history={spot.history}
-        effectiveStackBb={spot.effectiveStackBb}
+        format={currentSpot.format}
+        actingPosition={currentSpot.actingPosition}
+        history={currentSpot.history}
+        effectiveStackBb={currentSpot.effectiveStackBb}
         hand={currentCard?.hand}
       />
 
@@ -304,7 +332,7 @@ export default function Trainer() {
         )}
       </div>
 
-      <Link to="/spots" className="block mt-4 text-sm text-gray-400 hover:text-white text-center">
+      <Link to={category ? '/' : '/spots'} className="block mt-4 text-sm text-gray-400 hover:text-white text-center">
         ← End session
       </Link>
     </div>

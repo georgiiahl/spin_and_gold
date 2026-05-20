@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getAllSpots } from '@/storage/spots';
 import { getAllSessions } from '@/storage/sessions';
 import { getAllCards } from '@/storage/cards';
-import { SessionAnswer, Spot, TrainerCard } from '@/domain/types';
+import { SessionAnswer, Spot, TrainerCard, getSpotCategoryLabel } from '@/domain/types';
 
 export default function Dashboard() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -42,11 +42,32 @@ export default function Dashboard() {
   }, [cards]);
 
   const dueCardsCount = [...dueCardsBySpot.values()].reduce((sum, count) => sum + count, 0);
-  const startSpotId =
-    Array.from(dueCardsBySpot.entries()).reduce<[string, number] | null>(
-      (max, entry) => (entry[1] > (max?.[1] ?? 0) ? entry : max),
-      null
-    )?.[0] ?? spots[0]?.id;
+  const categoryCards = useMemo(() => {
+    const spotById = new Map(spots.map((spot) => [spot.id, spot]));
+    const groups = new Map<string, { name: string; spotCount: number; dueCards: number }>();
+
+    for (const spot of spots) {
+      const name = getSpotCategoryLabel(spot.category);
+      groups.set(name, {
+        name,
+        spotCount: (groups.get(name)?.spotCount ?? 0) + 1,
+        dueCards: groups.get(name)?.dueCards ?? 0,
+      });
+    }
+
+    for (const [spotId, count] of dueCardsBySpot.entries()) {
+      const spot = spotById.get(spotId);
+      if (!spot) continue;
+      const name = getSpotCategoryLabel(spot.category);
+      const group = groups.get(name);
+      if (!group) continue;
+      group.dueCards += count;
+    }
+
+    return Array.from(groups.values()).sort(
+      (a, b) => b.dueCards - a.dueCards || a.name.localeCompare(b.name)
+    );
+  }, [dueCardsBySpot, spots]);
 
   return (
     <div className="p-4">
@@ -70,16 +91,36 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {startSpotId && (
-        <Link
-          to={`/train/${startSpotId}`}
-          className="block p-4 mb-3 bg-blue-600 rounded-lg hover:bg-blue-500 transition"
-        >
-          <div className="font-semibold">Start Training</div>
-          <div className="text-sm text-blue-100">
-            {dueCardsCount > 0 ? 'Continue with due cards' : 'Start with your first spot'}
+      {categoryCards.length > 0 && (
+        <div className="mb-4">
+          <div className="mb-2">
+            <div className="font-semibold">Choose training category</div>
+            <div className="text-sm text-gray-400">
+              Train one spot group at a time instead of mixing unrelated stacks and spots.
+            </div>
           </div>
-        </Link>
+          <div className="flex flex-col gap-2">
+            {categoryCards.map((category) => (
+              <Link
+                key={category.name}
+                to={`/train?category=${encodeURIComponent(category.name)}`}
+                className="block p-4 bg-blue-600 rounded-lg hover:bg-blue-500 transition"
+              >
+                <div className="font-semibold">{category.name}</div>
+                <div className="text-sm text-blue-100">
+                  {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
+                  {category.dueCards === 1 ? '' : 's'}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {categoryCards.length === 0 && (
+        <div className="mb-4 rounded-lg border border-dashed border-gray-700 p-4 text-sm text-gray-400">
+          Create your first spot category to start training from the dashboard.
+        </div>
       )}
 
       <div className="flex flex-col gap-3">

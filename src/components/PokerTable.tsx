@@ -8,31 +8,36 @@ type Props = {
   hand?: string;
 };
 
-// [left%, top%] relative to container
-const SEATS_3MAX: Record<string, [number, number]> = {
-  BTN: [50, 84],
-  SB: [12, 22],
-  BB: [88, 22],
+type SeatLayout = {
+  seat: [number, number];
+  bet: [number, number];
+  cards: [number, number];
+  dealerButton?: [number, number];
 };
 
-const SEATS_HU: Record<string, [number, number]> = {
-  SB: [50, 84],
-  BB: [50, 10],
+const SEATS_3MAX: Record<string, SeatLayout> = {
+  BTN: { seat: [50, 80], bet: [50, 62], cards: [50, 92], dealerButton: [59, 77] },
+  SB: { seat: [18, 24], bet: [34, 40], cards: [18, 36] },
+  BB: { seat: [82, 24], bet: [66, 40], cards: [82, 36] },
 };
 
-const ACTION_BADGE_BG: Record<string, string> = {
-  fold: 'bg-fold',
-  call: 'bg-call',
-  raise: 'bg-raise',
-  jam: 'bg-jam',
-  open: 'bg-raise',
+const SEATS_HU: Record<string, SeatLayout> = {
+  SB: { seat: [50, 80], bet: [50, 60], cards: [50, 92], dealerButton: [59, 77] },
+  BB: { seat: [50, 16], bet: [50, 36], cards: [50, 28] },
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  call: 'Call',
+  raise: 'Raise',
+  jam: 'Jam',
+  open: 'Open',
 };
 
 export default function PokerTable({ format, actingPosition, history, effectiveStackBb, hand }: Props) {
   const positions = format === '3max' ? ['BTN', 'SB', 'BB'] : ['SB', 'BB'];
   const seatCoords = format === '3max' ? SEATS_3MAX : SEATS_HU;
+  const cards = buildCards(hand);
 
-  // Build position → last action map from history
   const positionActions = new Map<string, string>();
   for (const entry of history) {
     positionActions.set(entry.position, entry.action);
@@ -40,60 +45,120 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '52%' }}>
-      {/* Felt surface */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-[72%] h-[70%] bg-green-900/80 border-4 border-yellow-700/50 rounded-full shadow-inner" />
+        <div className="h-[72%] w-[78%] rounded-full border border-gray-500 bg-green-900" />
       </div>
 
-      {/* Center info: stack depth + hand */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="text-center">
-          <div className="text-xs text-gray-400 font-medium leading-none">{effectiveStackBb}bb</div>
-          {hand && (
-            <div className="text-3xl font-bold text-white mt-0.5 leading-tight drop-shadow">{hand}</div>
-          )}
-        </div>
-      </div>
-
-      {/* Seats */}
       {positions.map((pos) => {
-        const [left, top] = seatCoords[pos];
+        const seat = seatCoords[pos];
         const isActing = pos === actingPosition;
         const action = positionActions.get(pos);
+        const showChip = action && action !== 'fold';
 
         return (
-          <div
-            key={pos}
-            className="absolute flex flex-col items-center gap-0.5"
-            style={{ left: `${left}%`, top: `${top}%`, transform: 'translate(-50%, -50%)' }}
-          >
-            {/* Action chip (shown above seat) */}
-            {action && (
+          <div key={pos}>
+            {showChip && (
               <div
-                className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase text-white ${ACTION_BADGE_BG[action] ?? 'bg-gray-600'}`}
+                className="absolute flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-[9px] font-semibold text-gray-900"
+                style={{
+                  left: `${seat.bet[0]}%`,
+                  top: `${seat.bet[1]}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
               >
-                {action}
+                {ACTION_LABELS[action] ?? action}
               </div>
             )}
 
-            {/* Seat circle */}
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 select-none ${
+              className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-bold ${
                 isActing
-                  ? 'bg-blue-600 border-blue-300 text-white ring-2 ring-blue-400/40'
-                  : 'bg-gray-700 border-gray-500 text-gray-200'
+                  ? 'border-blue-300 bg-blue-700 text-white'
+                  : 'border-gray-500 bg-gray-700 text-gray-100'
               }`}
+              style={{ left: `${seat.seat[0]}%`, top: `${seat.seat[1]}%` }}
             >
               {pos}
             </div>
 
-            {/* "YOU" label under acting seat */}
-            {isActing && (
-              <div className="text-[10px] text-blue-400 font-semibold tracking-wide">YOU</div>
+            <div
+              className="absolute -translate-x-1/2 text-[11px] text-gray-300"
+              style={{ left: `${seat.seat[0]}%`, top: `${seat.seat[1] + 10}%` }}
+            >
+              {effectiveStackBb}bb
+            </div>
+
+            {seat.dealerButton && pos === (format === '3max' ? 'BTN' : 'SB') && (
+              <div
+                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-[10px] font-bold text-gray-900"
+                style={{ left: `${seat.dealerButton[0]}%`, top: `${seat.dealerButton[1]}%` }}
+              >
+                D
+              </div>
             )}
           </div>
         );
       })}
+
+      {cards && (
+        <div
+          className="absolute flex -translate-x-1/2 gap-1"
+          style={{
+            left: `${seatCoords[actingPosition]?.cards[0] ?? 50}%`,
+            top: `${seatCoords[actingPosition]?.cards[1] ?? 90}%`,
+          }}
+        >
+          {cards.map((card, index) => (
+            <div
+              key={`${card.rank}${card.suit}-${index}`}
+              className="flex h-10 w-7 items-center justify-center rounded border border-gray-300 bg-white text-xs font-bold text-gray-900"
+            >
+              <span>{card.rank}</span>
+              <span className={card.colorClass}>{card.suit}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+type RenderCard = {
+  rank: string;
+  suit: string;
+  colorClass: string;
+};
+
+const SUITS = [
+  { symbol: '♠', colorClass: 'text-black' },
+  { symbol: '♥', colorClass: 'text-red-500' },
+  { symbol: '♦', colorClass: 'text-sky-500' },
+  { symbol: '♣', colorClass: 'text-green-500' },
+];
+
+function buildCards(hand?: string): RenderCard[] | null {
+  if (!hand || hand.length < 2) return null;
+
+  const [rankA, rankB, rawSuffix] = hand.toUpperCase().split('');
+  const suffix = rawSuffix ?? '';
+  const seed = hand.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+  const firstSuitIndex = seed % SUITS.length;
+  let secondSuitIndex = firstSuitIndex;
+
+  if (rankA === rankB) {
+    secondSuitIndex = (firstSuitIndex + 1) % SUITS.length;
+  } else if (suffix !== 'S') {
+    secondSuitIndex = (firstSuitIndex + 1 + (seed % (SUITS.length - 1))) % SUITS.length;
+    if (secondSuitIndex === firstSuitIndex) {
+      secondSuitIndex = (secondSuitIndex + 1) % SUITS.length;
+    }
+  }
+
+  const firstSuit = SUITS[firstSuitIndex];
+  const secondSuit = SUITS[secondSuitIndex];
+
+  return [
+    { rank: rankA, suit: firstSuit.symbol, colorClass: firstSuit.colorClass },
+    { rank: rankB, suit: secondSuit.symbol, colorClass: secondSuit.colorClass },
+  ];
 }
