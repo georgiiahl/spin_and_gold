@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
 import SpotList from '@/pages/SpotList';
 import SpotForm from '@/pages/SpotForm';
+import ChartEditor from '@/pages/ChartEditor';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <Route path="/spots" element={<SpotList />} />
         <Route path="/spots/new" element={<SpotForm />} />
         <Route path="/spots/:id/edit" element={<SpotForm />} />
+        <Route path="/spots/:id/range" element={<ChartEditor />} />
       </Routes>
     </div>
   );
