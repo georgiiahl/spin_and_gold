@@ -25,6 +25,7 @@ export default function App() {
         <Route path="/spots/:id/stats" element={<SpotStats />} />
         <Route path="/spots/:id/study" element={<StudyMode />} />
         <Route path="/study/:id" element={<StudyMode />} />
+        <Route path="/train/category/:category" element={<Trainer />} />
         <Route path="/train/:id" element={<Trainer />} />
         <Route path="/visual/flash/:id" element={<FlashRange />} />
         <Route path="/visual/missing/:id" element={<MissingCells />} />

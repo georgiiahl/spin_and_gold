@@ -24,6 +24,7 @@ export type HistoryEntry = {
 export type Spot = {
   id: string;
   title: string;
+  category?: string;
   format: GameFormat;
   effectiveStackBb: number;
   actingPosition: string;

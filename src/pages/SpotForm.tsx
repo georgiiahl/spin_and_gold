@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { GameFormat, HistoryEntry, HistoryAction, Spot, getPositions } from '@/domain/types';
 import { generateSpotId } from '@/domain/spotId';
-import { getSpot, saveSpot } from '@/storage/spots';
+import { normalizeSpotCategory } from '@/domain/spotCategories';
+import { getAllCategories, getSpot, saveSpot } from '@/storage/spots';
 
 const HISTORY_ACTIONS: HistoryAction[] = ['fold', 'call', 'raise', 'jam', 'open'];
 
@@ -16,10 +17,16 @@ export default function SpotForm() {
   const [actingPosition, setActingPosition] = useState<string>('BTN');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [existingSpot, setExistingSpot] = useState<Spot | null>(null);
 
   const positions = getPositions(format) as string[];
+
+  useEffect(() => {
+    getAllCategories().then(setCategories);
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -31,6 +38,7 @@ export default function SpotForm() {
           setActingPosition(spot.actingPosition);
           setHistory(spot.history);
           setTitle(spot.title);
+          setCategory(spot.category || '');
           setNotes(spot.notes || '');
         }
       });
@@ -82,6 +90,7 @@ export default function SpotForm() {
     const spot: Spot = {
       id: spotId,
       title,
+      category: normalizeSpotCategory(category),
       format,
       effectiveStackBb: stack,
       actingPosition,
@@ -177,6 +186,24 @@ export default function SpotForm() {
           >
             + Add action
           </button>
+        </div>
+
+        {/* Title */}
+        <div>
+          <label className="text-sm text-gray-400 block mb-1">Category</label>
+          <input
+            list="spot-categories"
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="BTN Open"
+            className="w-full bg-gray-800 rounded px-3 py-2"
+          />
+          <datalist id="spot-categories">
+            {categories.map((existingCategory) => (
+              <option key={existingCategory} value={existingCategory} />
+            ))}
+          </datalist>
         </div>
 
         {/* Title */}
