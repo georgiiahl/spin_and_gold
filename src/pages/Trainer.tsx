@@ -86,6 +86,7 @@ export default function Trainer() {
   const [levelAfter, setLevelAfter] = useState(0);
   const [trainingCategoryLabel, setTrainingCategoryLabel] = useState('Category');
   const [depthHighlight, setDepthHighlight] = useState(false);
+  // @ts-ignore
   const [forceTrainAll, setForceTrainAll] = useState(false);
 
   const startTimeRef = useRef<number>(0);
