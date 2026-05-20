@@ -23,7 +23,8 @@ export async function deleteSpot(id: string): Promise<void> {
 
 export async function getSpotsByCategory(category: string): Promise<Spot[]> {
   const spots = await getAllSpots();
-  return spots.filter((spot) => getSpotCategoryLabel(spot.category) === category);
+  const normalizedCategory = normalizeSpotCategory(category) ?? category;
+  return spots.filter((spot) => getSpotCategoryLabel(spot.category) === normalizedCategory);
 }
 
 export async function getAllCategories(): Promise<string[]> {
