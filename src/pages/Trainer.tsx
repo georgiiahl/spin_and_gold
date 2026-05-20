@@ -86,6 +86,7 @@ export default function Trainer() {
   const [levelAfter, setLevelAfter] = useState(0);
   const [trainingCategoryLabel, setTrainingCategoryLabel] = useState('Category');
   const [depthHighlight, setDepthHighlight] = useState(false);
+  const [forceTrainAll, setForceTrainAll] = useState(false);
 
   const startTimeRef = useRef<number>(0);
   const recentHandsRef = useRef<string[]>([]);
@@ -135,10 +136,11 @@ export default function Trainer() {
     prevDepthRef.current = depth;
   }, [currentSpot?.effectiveStackBb]);
 
-  const initTrainer = useCallback(async () => {
+  const initTrainer = useCallback(async (trainAll = false) => {
     setLoading(true);
     setSessionEnded(false);
     setFixMode(false);
+    setForceTrainAll(trainAll);
     setPendingMistakeIds([]);
     setRemainingDueIds([]);
     setSessionAnswers([]);
@@ -212,17 +214,23 @@ export default function Trainer() {
     setLevelAfter(progressBefore.level);
 
     const trainableCards = filterTrainableCards(allCards, settings.includeTrashHandsInTraining);
-    const dueCards = trainableCards.filter((card) => !card.memory.dueAt || card.memory.dueAt <= Date.now());
-    const dueIds = dueCards.map((card) => card.id);
-    setRemainingDueIds(dueIds);
+
+    // If trainAll — use ALL trainable cards, not just due ones
+    const pool = trainAll
+      ? trainableCards
+      : trainableCards.filter((card) => !card.memory.dueAt || card.memory.dueAt <= Date.now());
+
+    const poolIds = pool.map((card) => card.id);
+    setRemainingDueIds(poolIds);
     setSessionStartMs(Date.now());
     setClockMs(Date.now());
 
-    const firstPool = applyMixFocus(dueCards, settings.focusOnMixedHands);
+    const firstPool = applyMixFocus(pool, settings.focusOnMixedHands);
     const first = chooseNextCard(firstPool);
     if (first) {
       showCard(first);
     } else {
+      // No cards to train — show empty session summary
       endSession(allCards);
     }
 
@@ -230,8 +238,12 @@ export default function Trainer() {
   }, [category, id, settings.focusOnMixedHands, settings.includeTrashHandsInTraining]);
 
   useEffect(() => {
-    initTrainer();
+    initTrainer(false);
   }, [initTrainer]);
+
+  function handleTrainAgain() {
+    initTrainer(true);
+  }
 
   function rememberShownCard(card: TrainerCard) {
     recentHandsRef.current = [...recentHandsRef.current, card.hand].slice(-RECENT_HANDS_LIMIT);
@@ -530,6 +542,7 @@ export default function Trainer() {
           levelAfter={levelAfter}
           mistakes={mistakeSummaries}
           onStartFixMistakes={startFixMistakes}
+          onTrainAgain={handleTrainAgain}
           complete={pendingMistakeIds.length === 0}
         />
       </div>
@@ -565,7 +578,7 @@ export default function Trainer() {
       )}
       {settings.sessionMode === 'until_done' && (
         <div className="mb-3 text-center text-sm text-gray-600">
-          Remaining due cards: {remainingDueIds.length}
+          Remaining: {remainingDueIds.length} card{remainingDueIds.length !== 1 ? 's' : ''}
         </div>
       )}
 
