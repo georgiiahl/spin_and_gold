@@ -100,3 +100,9 @@ export type SessionAnswer = {
   timestamp: number;
   errorType?: 'wrong_action' | 'mix_miss' | 'depth_confusion' | 'position_confusion';
 };
+
+export type SessionConfig = {
+  mode: 'until_done' | 'timed' | 'cards';
+  timeLimitMin?: number;
+  cardLimit?: number;
+};

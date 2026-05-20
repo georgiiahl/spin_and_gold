@@ -5,6 +5,13 @@ export type AppSettings = {
   showFrequenciesInFeedback: boolean;
   includeTrashHandsInTraining: boolean;
   focusOnMixedHands: boolean;
+  mixStrategy: 'strict' | 'tolerant';
+  mixThreshold: number;
+  feedbackSounds: boolean;
+  feedbackVibration: boolean;
+  sessionMode: 'until_done' | 'timed' | 'cards';
+  sessionTimeLimitMin: number;
+  sessionCardLimit: number;
 };
 
 const SETTINGS_KEY = 'spin-gold-settings-v1';
@@ -16,6 +23,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showFrequenciesInFeedback: true,
   includeTrashHandsInTraining: true,
   focusOnMixedHands: false,
+  mixStrategy: 'strict',
+  mixThreshold: 0.65,
+  feedbackSounds: true,
+  feedbackVibration: true,
+  sessionMode: 'until_done',
+  sessionTimeLimitMin: 20,
+  sessionCardLimit: 100,
 };
 
 export function loadSettings(): AppSettings {

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { getAllSpots } from '@/storage/spots';
 import { getAllSessions } from '@/storage/sessions';
 import { getAllCards } from '@/storage/cards';
-import { SessionAnswer, Spot, TrainerCard, getSpotCategoryLabel } from '@/domain/types';
+import { SessionAnswer, Spot, TrainerCard, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
+import { buildCategoryProgress } from '@/domain/progress';
 
 export default function Dashboard() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -44,15 +45,30 @@ export default function Dashboard() {
   const dueCardsCount = [...dueCardsBySpot.values()].reduce((sum, count) => sum + count, 0);
   const categoryCards = useMemo(() => {
     const spotById = new Map(spots.map((spot) => [spot.id, spot]));
-    const groups = new Map<string, { name: string; spotCount: number; dueCards: number }>();
+    const groups = new Map<string, {
+      key: string;
+      name: string;
+      spotCount: number;
+      dueCards: number;
+      maturePercent: number;
+      level: number;
+      recentAccuracyPercent: number;
+    }>();
+    const spotsByCategory = new Map<string, Spot[]>();
 
     for (const spot of spots) {
+      const key = normalizeSpotCategory(spot.category) ?? '';
       const name = getSpotCategoryLabel(spot.category);
       groups.set(name, {
+        key,
         name,
         spotCount: (groups.get(name)?.spotCount ?? 0) + 1,
         dueCards: groups.get(name)?.dueCards ?? 0,
+        maturePercent: 0,
+        level: 0,
+        recentAccuracyPercent: 0,
       });
+      spotsByCategory.set(key, [...(spotsByCategory.get(key) ?? []), spot]);
     }
 
     for (const [spotId, count] of dueCardsBySpot.entries()) {
@@ -64,10 +80,21 @@ export default function Dashboard() {
       group.dueCards += count;
     }
 
+    for (const group of groups.values()) {
+      const categorySpots = spotsByCategory.get(group.key) ?? [];
+      const progress = buildCategoryProgress(group.name, categorySpots, cards, sessions);
+      const mature = progress.totalCards > 0
+        ? (progress.masteredCards + progress.reviewCards) / progress.totalCards
+        : 0;
+      group.maturePercent = Math.round(mature * 100);
+      group.level = progress.level;
+      group.recentAccuracyPercent = Math.round(progress.recentAccuracy * 100);
+    }
+
     return Array.from(groups.values()).sort(
       (a, b) => b.dueCards - a.dueCards || a.name.localeCompare(b.name)
     );
-  }, [dueCardsBySpot, spots]);
+  }, [cards, dueCardsBySpot, sessions, spots]);
 
   return (
     <div className="mx-auto max-w-4xl p-4">
@@ -107,10 +134,21 @@ export default function Dashboard() {
                 className="block rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
               >
                   <div className="font-semibold">{category.name}</div>
-                <div className="text-sm text-blue-100">
+                <div className="mb-2 text-sm text-blue-100">
                   {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
                   {category.dueCards === 1 ? '' : 's'}
                 </div>
+                <div className="mb-1 flex items-center justify-between text-xs text-blue-100">
+                  <span>Level {category.level}</span>
+                  <span>Recent accuracy {category.recentAccuracyPercent}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-blue-800/50">
+                  <div
+                    className="h-2 rounded-full bg-emerald-300"
+                    style={{ width: `${category.maturePercent}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-xs text-blue-100">{category.maturePercent}% mature cards</div>
               </Link>
             ))}
           </div>
