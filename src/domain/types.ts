@@ -25,6 +25,7 @@ export type Spot = {
   id: string;
   title: string;
   format: GameFormat;
+  category?: string;
   effectiveStackBb: number;
   actingPosition: string;
   history: HistoryEntry[];
@@ -32,6 +33,17 @@ export type Spot = {
   createdAt: number;
   updatedAt: number;
 };
+
+export const UNCATEGORIZED_SPOT_CATEGORY = 'Uncategorized';
+
+export function normalizeSpotCategory(category?: string): string | undefined {
+  const trimmed = category?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+export function getSpotCategoryLabel(category?: string): string {
+  return normalizeSpotCategory(category) ?? UNCATEGORIZED_SPOT_CATEGORY;
+}
 
 // === Hand Frequencies ===
 export type HandFrequencies = {
