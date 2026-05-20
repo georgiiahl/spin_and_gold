@@ -3,6 +3,7 @@ import Dashboard from '@/pages/Dashboard';
 import SpotList from '@/pages/SpotList';
 import SpotForm from '@/pages/SpotForm';
 import ChartEditor from '@/pages/ChartEditor';
+import Trainer from '@/pages/Trainer';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/spots/new" element={<SpotForm />} />
         <Route path="/spots/:id/edit" element={<SpotForm />} />
         <Route path="/spots/:id/range" element={<ChartEditor />} />
+        <Route path="/train/:id" element={<Trainer />} />
       </Routes>
     </div>
   );
