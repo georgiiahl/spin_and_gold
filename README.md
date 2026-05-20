@@ -140,6 +140,8 @@ vite.config.ts                # Vite + PWA configuration
 
 ## Deployment (GitHub Pages)
 
+### Automatic deployment
+
 GitHub Actions workflow: `.github/workflows/deploy.yml`
 
 - Trigger: push to `master`
@@ -151,3 +153,29 @@ GitHub Actions workflow: `.github/workflows/deploy.yml`
   5. deploy `dist/` via `peaceiris/actions-gh-pages@v3`
 
 Vite `base` is configured as `/spin_and_gold/` for Pages hosting.
+
+### Enable GitHub Pages in repository settings
+
+1. Go to **Settings → Pages** in the repository.
+2. Under **Source**, select **GitHub Actions**.
+3. Save. The next push to `master` will trigger a deployment.
+
+The app will be available at:
+
+```
+https://georgiiahl.github.io/spin_and_gold/
+```
+
+### Manual deployment
+
+If you want to deploy the built assets yourself:
+
+```bash
+npm run build
+```
+
+Then upload or deploy the contents of the `dist/` folder to any static host (Netlify, Vercel, etc.) or use the `gh-pages` CLI:
+
+```bash
+npx gh-pages -d dist
+```
