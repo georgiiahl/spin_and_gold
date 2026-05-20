@@ -32,7 +32,7 @@ type FeedbackState = {
 
 export default function Trainer() {
   const { id, category: categoryParam } = useParams<{ id?: string; category?: string }>();
-  const selectedCategory = useMemo(() => decodeSpotCategory(categoryParam), [categoryParam]);
+  const categoryFilter = useMemo(() => decodeSpotCategory(categoryParam), [categoryParam]);
   const [spotsById, setSpotsById] = useState<Record<string, Spot>>({});
   const [fallbackSpot, setFallbackSpot] = useState<Spot | null>(null);
   const [cards, setCards] = useState<TrainerCard[]>([]);
@@ -45,12 +45,12 @@ export default function Trainer() {
   const settings = useMemo(() => loadSettings(), []);
 
   useEffect(() => {
-    if (!id && !selectedCategory) return;
+    if (!id && !categoryFilter) return;
     initTrainer();
-  }, [id, selectedCategory]);
+  }, [id, categoryFilter]);
 
   async function initTrainer() {
-    if (!id && !selectedCategory) return;
+    if (!id && !categoryFilter) return;
 
     setLoading(true);
     setFeedback(null);
@@ -63,7 +63,9 @@ export default function Trainer() {
 
     const selectedSpots = id
       ? [await getSpot(id)].filter((spot): spot is Spot => Boolean(spot))
-      : await getSpotsByCategory(selectedCategory!);
+      : categoryFilter
+        ? await getSpotsByCategory(categoryFilter)
+        : [];
 
     if (selectedSpots.length === 0) {
       setLoading(false);
@@ -226,8 +228,8 @@ export default function Trainer() {
   if (cards.length === 0) {
     return (
       <div className="p-4">
-        <p className="text-yellow-500">
-          {selectedCategory ? 'No hands in this category. Fill the charts first.' : 'No hands in range. Fill the chart first.'}
+          <p className="text-yellow-500">
+          {categoryFilter ? 'No hands in this category. Fill the charts first.' : 'No hands in range. Fill the chart first.'}
         </p>
         {id ? (
           <Link to={`/spots/${id}/range`} className="text-blue-400 text-sm mt-2 block">
@@ -247,7 +249,7 @@ export default function Trainer() {
       {/* Session stats */}
       <div className="mb-2 flex justify-between items-center">
         <span className="text-xs text-gray-500 text-left">
-          {selectedCategory ? `${selectedCategory} · ` : ''}
+          {categoryFilter ? `${categoryFilter} · ` : ''}
           {spot.title}
         </span>
         <span className="text-xs text-gray-500">

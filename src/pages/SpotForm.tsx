@@ -196,9 +196,12 @@ export default function SpotForm() {
             type="text"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="BTN Open"
+            placeholder="Group related spots like BTN Open"
             className="w-full bg-gray-800 rounded px-3 py-2"
           />
+          <div className="mt-1 text-xs text-gray-500">
+            Use categories to group related stack depths into one training session.
+          </div>
           <datalist id="spot-categories">
             {categories.map((existingCategory) => (
               <option key={existingCategory} value={existingCategory} />

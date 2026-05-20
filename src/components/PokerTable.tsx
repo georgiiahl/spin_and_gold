@@ -43,6 +43,7 @@ const SUIT_COLORS: Record<Suit, string> = {
 };
 
 const SUITS: Suit[] = ['spade', 'heart', 'diamond', 'club'];
+const RAISE_MULTIPLIER = 3;
 
 export default function PokerTable({ format, actingPosition, history, effectiveStackBb, hand }: Props) {
   const seatCoords = format === '3max' ? SEATS_3MAX : SEATS_HU;
@@ -143,7 +144,7 @@ function getActionAmounts(history: HistoryEntry[], effectiveStackBb: number, for
       amount = Math.max(2, currentPrice * 2);
       currentPrice = amount;
     } else if (entry.action === 'raise') {
-      amount = Math.min(effectiveStackBb, Math.max(currentPrice * 3, previousContribution + 1));
+      amount = Math.min(effectiveStackBb, Math.max(currentPrice * RAISE_MULTIPLIER, previousContribution + 1));
       currentPrice = amount;
     } else if (entry.action === 'call') {
       amount = currentPrice;
@@ -170,6 +171,7 @@ function parseHandCards(hand: string): [ParsedCard, ParsedCard] {
   const firstRank = hand[0] ?? 'A';
   const secondRank = hand[1] ?? firstRank;
   const modifier = hand[2];
+  // Keep suits consistent for the same hand while still looking random enough in the UI.
   const seed = hand.split('').reduce((total, char, index) => total + (char.charCodeAt(0) * (index + 1)), 0);
   const firstSuit = SUITS[seed % SUITS.length];
 

@@ -149,7 +149,7 @@ export default function SpotList() {
                         Study
                       </button>
                       <button
-                        onClick={() => navigate(`/train/category/${encodeSpotCategory(spot.category)}`)}
+                        onClick={() => navigate(`/train/${spot.id}`)}
                         className="px-2 py-1 bg-blue-700 rounded hover:bg-blue-600"
                       >
                         Train
