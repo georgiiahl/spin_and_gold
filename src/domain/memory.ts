@@ -143,11 +143,14 @@ function handleReview(card: TrainerCard, grade: AnswerGrade) {
 export function determineGrade(
   isCorrect: boolean,
   isMixedCorrect: boolean,
-  responseTimeMs: number
+  responseTimeMs: number,
+  thresholds?: { fastMs: number; slowMs: number }
 ): AnswerGrade {
+  const fastMs = thresholds?.fastMs ?? 2000;
+  const slowMs = thresholds?.slowMs ?? 8000;
   if (!isCorrect) return 'again';
   if (isMixedCorrect) return 'hard';
-  if (responseTimeMs > 8000) return 'hard';
-  if (responseTimeMs < 2000) return 'easy';
+  if (responseTimeMs > slowMs) return 'hard';
+  if (responseTimeMs < fastMs) return 'easy';
   return 'good';
 }

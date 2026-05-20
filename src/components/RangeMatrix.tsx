@@ -6,6 +6,7 @@ type Props = {
   range: Record<string, HandFrequencies>;
   onCellAction: (hand: string, action: Action) => void;
   onCellClick?: (hand: string) => void;
+  getCellClassName?: (hand: string, freq: HandFrequencies | undefined) => string;
   activeAction: Action;
   mode: 'simple' | 'frequency';
   readOnly?: boolean;
@@ -67,7 +68,7 @@ function getCellStyle(freq: HandFrequencies | undefined): React.CSSProperties {
   return { background: `linear-gradient(135deg, ${stops.join(', ')})` };
 }
 
-export default function RangeMatrix({ range, onCellAction, onCellClick, activeAction, mode, readOnly }: Props) {
+export default function RangeMatrix({ range, onCellAction, onCellClick, getCellClassName, activeAction, mode, readOnly }: Props) {
   const [isPainting, setIsPainting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +120,7 @@ export default function RangeMatrix({ range, onCellAction, onCellClick, activeAc
               className={`aspect-square flex items-center justify-center text-[8px] sm:text-[10px] font-medium rounded-[2px] cursor-pointer
                 ${!style.background ? baseColor : ''}
                 ${hasMix ? 'ring-1 ring-white/30' : ''}
+                ${getCellClassName?.(hand, freq) ?? ''}
                 hover:brightness-125 transition-all`}
               style={style.background ? style : undefined}
               onPointerDown={() => handlePointerDown(hand)}

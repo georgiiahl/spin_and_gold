@@ -109,6 +109,26 @@ export default function SpotList() {
                     ✕
                   </button>
                 </div>
+                <div className="mt-2 flex gap-2 text-xs">
+                  <button
+                    onClick={() => navigate(`/spots/${spot.id}/range`)}
+                    className="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                  >
+                    Chart
+                  </button>
+                  <button
+                    onClick={() => navigate(`/study/${spot.id}`)}
+                    className="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
+                  >
+                    Study
+                  </button>
+                  <button
+                    onClick={() => navigate(`/train/${spot.id}`)}
+                    className="px-2 py-1 bg-blue-700 rounded hover:bg-blue-600"
+                  >
+                    Train
+                  </button>
+                </div>
               </div>
             </div>
           ))}
