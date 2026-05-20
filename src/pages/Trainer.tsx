@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Action, HandFrequencies, SpotRange, Spot, SessionAnswer } from '@/domain/types';
+import { Action, HandFrequencies, SpotRange, Spot, SessionAnswer, TrainerCard } from '@/domain/types';
 import { ALL_HANDS } from '@/domain/hands';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 import { saveSession } from '@/storage/sessions';
+import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
+import { createNewCard, scheduleCard, determineGrade } from '@/domain/memory';
+import { pickNextCard } from '@/domain/priority';
 
 const ACTION_LABELS: Record<Action, string> = {
   fold: 'Fold',
@@ -27,50 +30,81 @@ type FeedbackState = {
 export default function Trainer() {
   const { id } = useParams<{ id: string }>();
   const [spot, setSpot] = useState<Spot | null>(null);
-  const [range, setRange] = useState<SpotRange | null>(null);
-  const [trainableHands, setTrainableHands] = useState<string[]>([]);
-  const [currentHand, setCurrentHand] = useState<string | null>(null);
+  const [cards, setCards] = useState<TrainerCard[]>([]);
+  const [currentCard, setCurrentCard] = useState<TrainerCard | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [sessionCount, setSessionCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([getSpot(id), getRange(id)]).then(([s, r]) => {
-      if (s) setSpot(s);
-      if (r) {
-        setRange(r);
-        // Only train hands that have at least one non-zero action
-        const hands = ALL_HANDS.filter((h) => {
-          const f = r[h];
-          return f && (f.fold + f.call + f.raise + f.jam) > 0;
-        });
-        setTrainableHands(hands);
-      }
-    });
+    initTrainer();
   }, [id]);
 
-  useEffect(() => {
-    if (trainableHands.length > 0 && !currentHand && !feedback) {
-      pickNextHand();
-    }
-  }, [trainableHands]);
+  async function initTrainer() {
+    if (!id) return;
+    const [s, range, existingCards] = await Promise.all([
+      getSpot(id),
+      getRange(id),
+      getCardsBySpot(id),
+    ]);
 
-  function pickNextHand() {
-    if (trainableHands.length === 0) return;
-    // Simple random for now (priority engine comes in Étap 5)
-    const idx = Math.floor(Math.random() * trainableHands.length);
-    setCurrentHand(trainableHands[idx]);
-    startTimeRef.current = Date.now();
+    if (!s || !range) {
+      setLoading(false);
+      return;
+    }
+    setSpot(s);
+
+    // Sync cards with range: create missing, update frequencies
+    const cardMap = new Map(existingCards.map((c) => [c.hand, c]));
+    const allCards: TrainerCard[] = [];
+    const newCards: TrainerCard[] = [];
+
+    for (const hand of ALL_HANDS) {
+      const freq = range[hand];
+      if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
+
+      const existing = cardMap.get(hand);
+      if (existing) {
+        // Update frequencies if changed
+        existing.frequencies = freq;
+        allCards.push(existing);
+      } else {
+        const card = createNewCard(id, hand, freq);
+        allCards.push(card);
+        newCards.push(card);
+      }
+    }
+
+    if (newCards.length > 0) {
+      await saveCards(newCards);
+    }
+
+    setCards(allCards);
+    setLoading(false);
+
+    // Pick first card
+    const next = pickNextCard(allCards);
+    if (next) {
+      setCurrentCard(next);
+      startTimeRef.current = Date.now();
+    }
+  }
+
+  function pickNext() {
+    const next = pickNextCard(cards);
+    if (next) {
+      setCurrentCard(next);
+      startTimeRef.current = Date.now();
+    }
     setFeedback(null);
   }
 
   const handleAnswer = useCallback(async (action: Action) => {
-    if (!currentHand || !range || !id) return;
-    const freq = range[currentHand];
-    if (!freq) return;
-
+    if (!currentCard || !id) return;
+    const freq = currentCard.frequencies;
     const responseTimeMs = Date.now() - startTimeRef.current;
 
     // Evaluate
@@ -91,11 +125,34 @@ export default function Trainer() {
     setSessionCount((c) => c + 1);
     if (isCorrect) setCorrectCount((c) => c + 1);
 
-    // Save session answer
-    const grade = !isCorrect ? 'again' : isMixedCorrect ? 'hard' : responseTimeMs > 5000 ? 'hard' : 'good';
+    // Grade and schedule
+    const grade = determineGrade(isCorrect, isMixedCorrect, responseTimeMs);
+    const updatedCard = scheduleCard(currentCard, grade);
+
+    // Update stats
+    updatedCard.stats.shown += 1;
+    if (isCorrect) {
+      updatedCard.stats.correct += 1;
+      updatedCard.stats.streak += 1;
+    } else {
+      updatedCard.stats.wrong += 1;
+      updatedCard.stats.streak = 0;
+    }
+    // Running average response time
+    const n = updatedCard.stats.shown;
+    updatedCard.stats.avgResponseMs = Math.round(
+      ((updatedCard.stats.avgResponseMs * (n - 1)) + responseTimeMs) / n
+    );
+
+    await saveCard(updatedCard);
+
+    // Update in local state
+    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
+
+    // Save session
     const answer: SessionAnswer = {
       spotId: id,
-      hand: currentHand,
+      hand: currentCard.hand,
       selectedAction: action,
       correctActions,
       primaryAction,
@@ -106,17 +163,22 @@ export default function Trainer() {
       timestamp: Date.now(),
     };
     await saveSession(answer);
-  }, [currentHand, range, id]);
+  }, [currentCard, id]);
 
-  function handleNext() {
-    pickNextHand();
-  }
-
-  if (!spot || !range) {
+  if (loading) {
     return <div className="p-4 text-gray-400">Loading...</div>;
   }
 
-  if (trainableHands.length === 0) {
+  if (!spot) {
+    return (
+      <div className="p-4">
+        <p className="text-red-400">Spot not found.</p>
+        <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
+      </div>
+    );
+  }
+
+  if (cards.length === 0) {
     return (
       <div className="p-4">
         <p className="text-yellow-500">No hands in range. Fill the chart first.</p>
@@ -144,12 +206,11 @@ export default function Trainer() {
 
       {/* Hand display */}
       <div className="flex-1 flex flex-col items-center justify-center">
-        {currentHand && !feedback && (
+        {currentCard && !feedback && (
           <div className="text-center">
-            <div className="text-5xl font-bold mb-8">{currentHand}</div>
+            <div className="text-5xl font-bold mb-8">{currentCard.hand}</div>
             <div className="text-sm text-gray-400 mb-6">What's your action?</div>
 
-            {/* Action buttons */}
             <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
               {ACTIONS.map((a) => (
                 <button
@@ -167,9 +228,8 @@ export default function Trainer() {
         {/* Feedback */}
         {feedback && (
           <div className="text-center w-full max-w-xs">
-            <div className="text-4xl font-bold mb-2">{currentHand}</div>
+            <div className="text-4xl font-bold mb-2">{currentCard?.hand}</div>
 
-            {/* Result badge */}
             <div
               className={`text-xl font-bold mb-4 ${
                 feedback.isCorrect
@@ -186,7 +246,6 @@ export default function Trainer() {
                 : '✗ Wrong'}
             </div>
 
-            {/* Details */}
             <div className="bg-gray-800 rounded-lg p-3 text-left text-sm mb-4">
               <div className="mb-2">
                 <span className="text-gray-400">You chose: </span>
@@ -211,7 +270,7 @@ export default function Trainer() {
             </div>
 
             <button
-              onClick={handleNext}
+              onClick={pickNext}
               className="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-500 active:scale-95 transition-transform"
             >
               Next →
