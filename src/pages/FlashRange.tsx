@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Action, HandFrequencies, SpotRange, Spot } from '@/domain/types';
-import { ALL_HANDS, HAND_MATRIX } from '@/domain/hands';
+import { Action, SpotRange, Spot } from '@/domain/types';
+import { ALL_HANDS } from '@/domain/hands';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 import RangeMatrix from '@/components/RangeMatrix';

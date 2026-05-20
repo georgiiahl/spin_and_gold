@@ -1,4 +1,4 @@
-import { TrainerCard, CardPhase, AnswerGrade, HandFrequencies } from '@/domain/types';
+import { TrainerCard, AnswerGrade, HandFrequencies } from '@/domain/types';
 
 // === Learning steps (in minutes) ===
 const LEARNING_STEPS = [1, 10, 60]; // 1min, 10min, 1hr
