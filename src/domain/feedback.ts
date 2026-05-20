@@ -1,6 +1,7 @@
 import { AppSettings } from '@/storage/settings';
 
 export type FeedbackKind = 'correct' | 'slow_correct' | 'depth_confusion' | 'wrong' | 'mix_acceptable';
+type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
 
 type FeedbackConfig = {
   vibrate: number[];
@@ -50,16 +51,18 @@ const FEEDBACK_CONFIG: Record<FeedbackKind, FeedbackConfig> = {
   },
 };
 
+const FLASH_DURATION_MS = 250;
+
 let audioContext: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
-  if (!window.AudioContext && !(window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext) {
+  const webkitWindow = window as WebkitWindow;
+  if (!window.AudioContext && !webkitWindow.webkitAudioContext) {
     return null;
   }
   if (!audioContext) {
-    const Ctx = window.AudioContext
-      ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Ctx = window.AudioContext ?? webkitWindow.webkitAudioContext;
     audioContext = Ctx ? new Ctx() : null;
   }
   return audioContext;
@@ -105,7 +108,7 @@ export function triggerFeedback(kind: FeedbackKind, settings: Pick<AppSettings, 
   if (typeof document !== 'undefined') {
     const className = `feedback-flash-${kind}`;
     document.body.classList.add(className);
-    window.setTimeout(() => document.body.classList.remove(className), 250);
+    window.setTimeout(() => document.body.classList.remove(className), FLASH_DURATION_MS);
   }
   if (settings.feedbackVibration) {
     triggerVibration(kind);

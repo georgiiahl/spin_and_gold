@@ -4,7 +4,7 @@
 
 body {
   @apply min-h-screen bg-gray-50 text-gray-900;
-  transition: background-color 240ms ease;
+  transition: background-color 250ms ease;
 }
 
 body.feedback-flash-correct {
@@ -38,5 +38,5 @@ body.feedback-flash-mix_acceptable {
 }
 
 .animate-pulse-amber {
-  animation: pulse-amber 700ms ease-in-out 2;
+  animation: pulse-amber 900ms ease-in-out 2;
 }

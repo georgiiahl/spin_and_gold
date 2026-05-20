@@ -45,7 +45,9 @@ const ACTION_TEXT_CLASSES: Record<Action, string> = {
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const RECENT_HANDS_LIMIT = 8;
 const RECENT_SPOTS_LIMIT = 3;
-const DEPTH_CONFUSION_NEIGHBOR_BB = 3;
+const MAX_DEPTH_DIFFERENCE_BB = 3;
+const MS_PER_MINUTE = 60_000;
+const DEPTH_HIGHLIGHT_MS = 900;
 
 type FeedbackState = {
   kind: FeedbackKind;
@@ -110,15 +112,10 @@ export default function Trainer() {
     return actions.length > 0 ? actions : ACTIONS;
   }, [rangesBySpot]);
 
-  const timeLimitMs = settings.sessionTimeLimitMin * 60_000;
+  const timeLimitMs = settings.sessionTimeLimitMin * MS_PER_MINUTE;
   const timedRemainingMs = Math.max(0, timeLimitMs - (clockMs - sessionStartMs));
   const isTimedLimitReached = settings.sessionMode === 'timed' && (clockMs - sessionStartMs) >= timeLimitMs;
   const isCardLimitReached = settings.sessionMode === 'cards' && sessionCount >= settings.sessionCardLimit;
-
-  useEffect(() => {
-    initTrainer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, category]);
 
   useEffect(() => {
     if (sessionEnded) return;
@@ -132,13 +129,13 @@ export default function Trainer() {
     if (prevDepthRef.current !== null && prevDepthRef.current !== depth) {
       prevDepthRef.current = depth;
       setDepthHighlight(true);
-      const timer = window.setTimeout(() => setDepthHighlight(false), 900);
+      const timer = window.setTimeout(() => setDepthHighlight(false), DEPTH_HIGHLIGHT_MS);
       return () => window.clearTimeout(timer);
     }
     prevDepthRef.current = depth;
   }, [currentSpot?.effectiveStackBb]);
 
-  async function initTrainer() {
+  const initTrainer = useCallback(async () => {
     setLoading(true);
     setSessionEnded(false);
     setFixMode(false);
@@ -230,7 +227,11 @@ export default function Trainer() {
     }
 
     setLoading(false);
-  }
+  }, [category, id, settings.focusOnMixedHands, settings.includeTrashHandsInTraining]);
+
+  useEffect(() => {
+    initTrainer();
+  }, [initTrainer]);
 
   function rememberShownCard(card: TrainerCard) {
     recentHandsRef.current = [...recentHandsRef.current, card.hand].slice(-RECENT_HANDS_LIMIT);
@@ -357,7 +358,7 @@ export default function Trainer() {
 
     let feedbackKind: FeedbackKind;
     if (isCorrect) {
-      if (!tolerant && trueMix && action !== primaryAction) {
+      if (isMixAcceptable(tolerant, trueMix, action, primaryAction)) {
         feedbackKind = 'mix_acceptable';
       } else if (responseTimeMs > settings.slowResponseMs) {
         feedbackKind = 'slow_correct';
@@ -392,7 +393,7 @@ export default function Trainer() {
     if (!isCorrect) {
       if (errorClassification.type === 'depth_confusion') {
         errorType = 'depth_confusion';
-      } else if (!tolerant && !trueMix && action !== primaryAction && freq[action] > 0) {
+      } else if (!isMixAcceptable(tolerant, trueMix, action, primaryAction) && action !== primaryAction && freq[action] > 0) {
         errorType = 'mix_miss';
       } else {
         errorType = 'wrong_action';
@@ -690,6 +691,10 @@ function getPrimaryAction(freq: HandFrequencies): Action {
   return ACTIONS.reduce((best, action) => (freq[action] > freq[best] ? action : best), 'fold' as Action);
 }
 
+function isMixAcceptable(tolerant: boolean, trueMix: boolean, selectedAction: Action, primaryAction: Action): boolean {
+  return !tolerant && trueMix && selectedAction !== primaryAction;
+}
+
 function classifyError(
   selectedAction: Action,
   currentSpot: Spot,
@@ -713,7 +718,7 @@ function classifyError(
 
     const siblingPrimary = getPrimaryAction(siblingFreq);
     const diff = Math.abs(sibling.effectiveStackBb - currentSpot.effectiveStackBb);
-    if (siblingPrimary === selectedAction && diff <= DEPTH_CONFUSION_NEIGHBOR_BB) {
+    if (siblingPrimary === selectedAction && diff <= MAX_DEPTH_DIFFERENCE_BB) {
       return { type: 'depth_confusion', confusedWithSpot: sibling };
     }
   }

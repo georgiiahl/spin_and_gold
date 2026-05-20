@@ -134,7 +134,7 @@ export default function Dashboard() {
                 className="block rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
               >
                   <div className="font-semibold">{category.name}</div>
-                <div className="text-sm text-blue-100 mb-2">
+                <div className="mb-2 text-sm text-blue-100">
                   {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
                   {category.dueCards === 1 ? '' : 's'}
                 </div>
