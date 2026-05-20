@@ -1,5 +1,8 @@
 import { TrainerCard, HandFrequencies } from '@/domain/types';
 
+const RECENT_HAND_PENALTY = 0.1;
+const RECENT_SPOT_PENALTY = 0.5;
+
 /**
  * Smart Priority Engine
  * 
@@ -119,10 +122,10 @@ export function pickNextCard(
   const scored = cards.map((card) => {
     let score = calculatePriority(card);
     if (recentHandsSet.has(card.hand)) {
-      score *= 0.1;
+      score *= RECENT_HAND_PENALTY;
     }
     if (recentSpotIdsSet.has(card.spotId)) {
-      score *= 0.5;
+      score *= RECENT_SPOT_PENALTY;
     }
     return { card, score };
   });
