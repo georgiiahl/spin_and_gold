@@ -4,4 +4,39 @@
 
 body {
   @apply min-h-screen bg-gray-50 text-gray-900;
+  transition: background-color 240ms ease;
+}
+
+body.feedback-flash-correct {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
+body.feedback-flash-slow_correct {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+body.feedback-flash-depth_confusion {
+  background-color: rgba(245, 158, 11, 0.2);
+}
+
+body.feedback-flash-wrong {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+body.feedback-flash-mix_acceptable {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+@keyframes pulse-amber {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-pulse-amber {
+  animation: pulse-amber 700ms ease-in-out 2;
 }

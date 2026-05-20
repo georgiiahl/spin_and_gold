@@ -24,6 +24,9 @@ export default function Settings() {
       flashDurationSec: Math.max(1, Math.min(10, Math.round(settings.flashDurationSec))),
       fastResponseMs: Math.max(200, Math.round(settings.fastResponseMs)),
       slowResponseMs: Math.max(1000, Math.round(settings.slowResponseMs)),
+      mixThreshold: Math.max(0, Math.min(1, Number(settings.mixThreshold.toFixed(2)))),
+      sessionTimeLimitMin: Math.max(1, Math.round(settings.sessionTimeLimitMin)),
+      sessionCardLimit: Math.max(1, Math.round(settings.sessionCardLimit)),
     };
     if (normalized.fastResponseMs >= normalized.slowResponseMs) {
       setError('Fast response threshold must be less than slow response threshold.');
@@ -88,6 +91,29 @@ export default function Settings() {
         <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-semibold">Trainer Behavior</h2>
           <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Mix strategy</span>
+            <select
+              value={settings.mixStrategy}
+              onChange={(e) => update('mixStrategy', e.target.value as AppSettings['mixStrategy'])}
+              className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            >
+              <option value="strict">Strict (primary only)</option>
+              <option value="tolerant">Tolerant (any &gt; 0)</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Strict mix threshold</span>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={settings.mixThreshold}
+              onChange={(e) => update('mixThreshold', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
             <span className="text-gray-700">Show frequencies in feedback</span>
             <input
               type="checkbox"
@@ -109,6 +135,58 @@ export default function Settings() {
               type="checkbox"
               checked={settings.focusOnMixedHands}
               onChange={(e) => update('focusOnMixedHands', e.target.checked)}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Feedback sounds</span>
+            <input
+              type="checkbox"
+              checked={settings.feedbackSounds}
+              onChange={(e) => update('feedbackSounds', e.target.checked)}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Feedback vibration</span>
+            <input
+              type="checkbox"
+              checked={settings.feedbackVibration}
+              onChange={(e) => update('feedbackVibration', e.target.checked)}
+            />
+          </label>
+        </section>
+
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="font-semibold">Session Limits</h2>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Session mode</span>
+            <select
+              value={settings.sessionMode}
+              onChange={(e) => update('sessionMode', e.target.value as AppSettings['sessionMode'])}
+              className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            >
+              <option value="until_done">Until due cards are done</option>
+              <option value="timed">Timed</option>
+              <option value="cards">Card limit</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Timed limit (minutes)</span>
+            <input
+              type="number"
+              min={1}
+              value={settings.sessionTimeLimitMin}
+              onChange={(e) => update('sessionTimeLimitMin', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Card limit</span>
+            <input
+              type="number"
+              min={1}
+              value={settings.sessionCardLimit}
+              onChange={(e) => update('sessionCardLimit', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
         </section>
