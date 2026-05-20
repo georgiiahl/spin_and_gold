@@ -4,6 +4,7 @@ export default {
   safelist: [
     'bg-fold', 'bg-call', 'bg-raise', 'bg-jam',
     'bg-fold/70', 'bg-call/70', 'bg-raise/70', 'bg-jam/70',
+    'text-fold', 'text-call', 'text-raise', 'text-jam',
   ],
   theme: {
     extend: {

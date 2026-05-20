@@ -9,6 +9,7 @@ import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
 import { createNewCard, scheduleCard, determineGrade } from '@/domain/memory';
 import { pickNextCard } from '@/domain/priority';
 import { loadSettings } from '@/storage/settings';
+import PokerTable from '@/components/PokerTable';
 
 const ACTION_LABELS: Record<Action, string> = {
   fold: 'Fold',
@@ -212,27 +213,30 @@ export default function Trainer() {
 
   return (
     <div className="p-4 flex flex-col min-h-screen">
-      {/* Spot info */}
-      <div className="mb-4">
-        <div className="text-xs text-gray-400">
-          {spot.format} · {spot.effectiveStackBb}bb · {spot.actingPosition}
-          {spot.history.length > 0 &&
-            ' · ' + spot.history.map((h) => `${h.position} ${h.action}`).join(' → ')}
-        </div>
-        <div className="text-xs text-gray-500 mt-1">
-          Session: {correctCount}/{sessionCount}
+      {/* Session stats */}
+      <div className="mb-2 flex justify-between items-center">
+        <span className="text-xs text-gray-500">{spot.format} · {spot.actingPosition}</span>
+        <span className="text-xs text-gray-500">
+          {correctCount}/{sessionCount}
           {sessionCount > 0 && ` (${Math.round((correctCount / sessionCount) * 100)}%)`}
-        </div>
+        </span>
       </div>
 
-      {/* Hand display */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        {currentCard && !feedback && (
-          <div className="text-center">
-            <div className="text-5xl font-bold mb-8">{currentCard.hand}</div>
-            <div className="text-sm text-gray-400 mb-6">What's your action?</div>
+      {/* Visual poker table */}
+      <PokerTable
+        format={spot.format}
+        actingPosition={spot.actingPosition}
+        history={spot.history}
+        effectiveStackBb={spot.effectiveStackBb}
+        hand={currentCard?.hand}
+      />
 
-            <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+      {/* Action area */}
+      <div className="flex-1 flex flex-col items-center justify-center mt-4">
+        {currentCard && !feedback && (
+          <div className="w-full max-w-xs">
+            <div className="text-sm text-gray-400 text-center mb-4">What's your action?</div>
+            <div className="grid grid-cols-2 gap-3">
               {ACTIONS.map((a) => (
                 <button
                   key={a}
@@ -249,10 +253,8 @@ export default function Trainer() {
         {/* Feedback */}
         {feedback && (
           <div className="text-center w-full max-w-xs">
-            <div className="text-4xl font-bold mb-2">{currentCard?.hand}</div>
-
             <div
-              className={`text-xl font-bold mb-4 ${
+              className={`text-xl font-bold mb-3 ${
                 feedback.isCorrect
                   ? feedback.isMixedCorrect
                     ? 'text-yellow-400'
