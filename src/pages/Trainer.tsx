@@ -26,6 +26,8 @@ const ACTION_LABELS: Record<Action, string> = {
 };
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
+const RECENT_HANDS_LIMIT = 8;
+const RECENT_SPOTS_LIMIT = 3;
 
 type FeedbackState = {
   isCorrect: boolean;
@@ -48,6 +50,8 @@ export default function Trainer() {
   const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef<number>(0);
+  const recentHandsRef = useRef<string[]>([]);
+  const lastShownSpotIdsRef = useRef<string[]>([]);
   const settings = useMemo(() => loadSettings(), []);
   const currentSpot = useMemo(
     () => spots.find((spot) => spot.id === currentCard?.spotId) ?? spots[0] ?? null,
@@ -66,6 +70,8 @@ export default function Trainer() {
     setFeedback(null);
     setSessionCount(0);
     setCorrectCount(0);
+    recentHandsRef.current = [];
+    lastShownSpotIdsRef.current = [];
 
     const selectedSpots = id
       ? [await getSpot(id)].filter((spot): spot is Spot => Boolean(spot))
@@ -123,11 +129,44 @@ export default function Trainer() {
     });
     const mixedCards = trainableCards.filter((card) => countNonZeroActions(card) > 1);
     const initialPool = settings.focusOnMixedHands && mixedCards.length > 0 ? mixedCards : trainableCards;
-    const next = pickNextCard(initialPool.length > 0 ? initialPool : allCards);
+    const next = chooseNextCard(initialPool.length > 0 ? initialPool : allCards);
     if (next) {
-      setCurrentCard(next);
-      startTimeRef.current = Date.now();
+      showCard(next);
     }
+  }
+
+  function rememberShownCard(card: TrainerCard) {
+    recentHandsRef.current = [...recentHandsRef.current, card.hand].slice(-RECENT_HANDS_LIMIT);
+    lastShownSpotIdsRef.current = [...lastShownSpotIdsRef.current, card.spotId].slice(-RECENT_SPOTS_LIMIT);
+  }
+
+  function showCard(card: TrainerCard) {
+    setCurrentCard(card);
+    startTimeRef.current = Date.now();
+    rememberShownCard(card);
+  }
+
+  function chooseNextCard(pool: TrainerCard[]): TrainerCard | null {
+    const recentSpotIds = lastShownSpotIdsRef.current;
+    let next = pickNextCard(pool, recentHandsRef.current, recentSpotIds);
+    const nextSpotId = next?.spotId;
+
+    if (
+      nextSpotId
+      && recentSpotIds.length === RECENT_SPOTS_LIMIT
+      && recentSpotIds.every((spotId) => spotId === nextSpotId)
+    ) {
+      const alternate = pickNextCard(
+        pool.filter((card) => card.spotId !== nextSpotId),
+        recentHandsRef.current,
+        recentSpotIds
+      );
+      if (alternate) {
+        next = alternate;
+      }
+    }
+
+    return next;
   }
 
   function pickNext() {
@@ -139,10 +178,9 @@ export default function Trainer() {
     });
     const mixedOnly = pool.filter((card) => countNonZeroActions(card) > 1);
     const candidates = settings.focusOnMixedHands && mixedOnly.length > 0 ? mixedOnly : pool;
-    const next = pickNextCard(candidates.length > 0 ? candidates : cards);
+    const next = chooseNextCard(candidates.length > 0 ? candidates : cards);
     if (next) {
-      setCurrentCard(next);
-      startTimeRef.current = Date.now();
+      showCard(next);
     }
     setFeedback(null);
   }
@@ -214,13 +252,13 @@ export default function Trainer() {
   }, [currentCard, settings.fastResponseMs, settings.slowResponseMs]);
 
   if (loading) {
-    return <div className="p-4 text-gray-400">Loading...</div>;
+    return <div className="p-4 text-gray-500">Loading...</div>;
   }
 
   if (!currentSpot) {
     return (
       <div className="p-4">
-        <p className="text-red-400">{category ? 'Category not found.' : 'Spot not found.'}</p>
+        <p className="text-red-600">{category ? 'Category not found.' : 'Spot not found.'}</p>
         <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
       </div>
     );
@@ -238,12 +276,12 @@ export default function Trainer() {
   }
 
   return (
-    <div className="p-4 flex flex-col min-h-screen">
+    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col p-4">
       {/* Session stats */}
       <div className="mb-2 flex justify-between items-center">
-        <span className="text-xs text-gray-500">
-          {category ? `${category} · ${currentSpot.title}` : `${currentSpot.format} · ${currentSpot.actingPosition}`}
-        </span>
+          <span className="text-xs text-gray-500">
+            {category ? `${category} · ${currentSpot.title}` : `${currentSpot.format} · ${currentSpot.actingPosition}`}
+          </span>
         <span className="text-xs text-gray-500">
           {correctCount}/{sessionCount}
           {sessionCount > 0 && ` (${Math.round((correctCount / sessionCount) * 100)}%)`}
@@ -263,13 +301,13 @@ export default function Trainer() {
       <div className="flex-1 flex flex-col items-center justify-center mt-4">
         {currentCard && !feedback && (
           <div className="w-full max-w-xs">
-            <div className="text-sm text-gray-400 text-center mb-4">What's your action?</div>
+            <div className="mb-4 text-center text-sm text-gray-500">What's your action?</div>
             <div className="grid grid-cols-2 gap-3">
               {ACTIONS.map((a) => (
                 <button
                   key={a}
                   onClick={() => handleAnswer(a)}
-                  className={`py-4 rounded-xl font-bold text-lg bg-${a} active:scale-95 transition-transform`}
+                  className={`rounded-xl bg-${a} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
                 >
                   {ACTION_LABELS[a]}
                 </button>
@@ -285,11 +323,11 @@ export default function Trainer() {
               className={`text-xl font-bold mb-3 ${
                 feedback.isCorrect
                   ? feedback.isMixedCorrect
-                    ? 'text-yellow-400'
-                    : 'text-green-400'
-                  : 'text-red-400'
-              }`}
-            >
+                    ? 'text-yellow-600'
+                    : 'text-green-600'
+                  : 'text-red-600'
+               }`}
+             >
               {feedback.isCorrect
                 ? feedback.isMixedCorrect
                   ? '✓ Correct (mix)'
@@ -297,20 +335,20 @@ export default function Trainer() {
                 : '✗ Wrong'}
             </div>
 
-            <div className="bg-gray-800 rounded-lg p-3 text-left text-sm mb-4">
+            <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 text-left text-sm shadow-sm">
               <div className="mb-2">
-                <span className="text-gray-400">You chose: </span>
+                <span className="text-gray-500">You chose: </span>
                 <span className={`font-medium text-${feedback.selectedAction}`}>
                   {ACTION_LABELS[feedback.selectedAction]}
                 </span>
               </div>
               <div className="mb-2">
-                <span className="text-gray-400">Primary: </span>
+                <span className="text-gray-500">Primary: </span>
                 <span className="font-medium">{ACTION_LABELS[feedback.primaryAction]}</span>
               </div>
               {settings.showFrequenciesInFeedback && (
                 <div>
-                  <span className="text-gray-400">Frequencies: </span>
+                  <span className="text-gray-500">Frequencies: </span>
                   <div className="mt-1">
                     {ACTIONS.filter((a) => feedback.frequencies[a] > 0).map((a) => (
                       <span key={a} className={`inline-block mr-2 text-${a}`}>
@@ -322,17 +360,17 @@ export default function Trainer() {
               )}
             </div>
 
-            <button
-              onClick={pickNext}
-              className="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-500 active:scale-95 transition-transform"
-            >
-              Next →
-            </button>
+              <button
+                onClick={pickNext}
+                className="w-full rounded-xl bg-blue-600 py-4 text-lg font-bold text-white transition-transform hover:bg-blue-500 active:scale-95"
+              >
+                Next →
+              </button>
           </div>
         )}
       </div>
 
-      <Link to={category ? '/' : '/spots'} className="block mt-4 text-sm text-gray-400 hover:text-white text-center">
+      <Link to={category ? '/' : '/spots'} className="mt-4 block text-center text-sm text-gray-500 hover:text-gray-900">
         ← End session
       </Link>
     </div>

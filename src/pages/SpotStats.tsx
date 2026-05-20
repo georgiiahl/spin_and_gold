@@ -34,12 +34,12 @@ export default function SpotStats() {
     );
   }, [id]);
 
-  if (loading) return <div className="p-4 text-gray-400">Loading...</div>;
+  if (loading) return <div className="p-4 text-gray-500">Loading...</div>;
 
   if (!spot) {
     return (
       <div className="p-4">
-        <p className="text-red-400">Spot not found.</p>
+        <p className="text-red-600">Spot not found.</p>
         <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
       </div>
     );
@@ -53,54 +53,54 @@ export default function SpotStats() {
     <div className="p-4">
       <div className="mb-4">
         <h1 className="text-xl font-bold">Spot Statistics</h1>
-        <div className="text-xs text-gray-400">{spot.title}</div>
+        <div className="text-xs text-gray-500">{spot.title}</div>
       </div>
 
       <div className="grid gap-4">
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Overview</h2>
-          <div className="text-sm text-gray-300 space-y-2">
+          <div className="text-sm text-gray-700 space-y-2">
             <div>Total cards: {cards.length}</div>
             <div>Total answers: {sessions.length}</div>
             <div>Average response time: {formatResponseTime(stats.avgResponseTimeMs)}</div>
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Card phases</h2>
           <div className="space-y-2 text-sm">
             {Object.entries(stats.phaseDistribution).map(([phase, count]) => (
               <div key={phase} className="flex items-center justify-between">
-                <span className="capitalize text-gray-300">{phase}</span>
+                <span className="capitalize text-gray-700">{phase}</span>
                 <span>{count}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Accuracy by action</h2>
           <div className="space-y-2 text-sm">
             {Object.entries(stats.accuracyByAction).map(([action, actionStats]) => (
               <div key={action} className="flex items-center justify-between gap-3">
-                <span className="capitalize text-gray-300">{action}</span>
-                <span className="text-gray-400">{actionStats.correct}/{actionStats.attempts}</span>
+                <span className="capitalize text-gray-700">{action}</span>
+                <span className="text-gray-500">{actionStats.correct}/{actionStats.attempts}</span>
                 <span>{formatPercent(actionStats.accuracy)}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Hardest hands</h2>
           {hardestHands.length === 0 ? (
-            <div className="text-sm text-gray-400">Need at least 3 attempts on a hand.</div>
+            <div className="text-sm text-gray-500">Need at least 3 attempts on a hand.</div>
           ) : (
             <div className="space-y-2 text-sm">
               {hardestHands.map((hand) => (
                 <div key={hand.hand} className="flex items-center justify-between gap-3">
                   <span className="font-medium">{hand.hand}</span>
-                  <span className="text-gray-400">{hand.correct}/{hand.attempts}</span>
+                  <span className="text-gray-500">{hand.correct}/{hand.attempts}</span>
                   <span>{formatPercent(hand.correctRate)}</span>
                 </div>
               ))}
@@ -108,10 +108,10 @@ export default function SpotStats() {
           )}
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
           <h2 className="font-semibold mb-3">Error heatmap</h2>
           {errorHeatmap.length === 0 ? (
-            <div className="text-sm text-gray-400">No errors recorded yet.</div>
+            <div className="text-sm text-gray-500">No errors recorded yet.</div>
           ) : (
             <div className="space-y-2 text-sm">
               {errorHeatmap.slice(0, 10).map(([hand, errors]) => (
@@ -125,7 +125,7 @@ export default function SpotStats() {
         </section>
       </div>
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Back to spots
       </Link>
     </div>

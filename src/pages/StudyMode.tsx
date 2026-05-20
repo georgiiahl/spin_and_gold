@@ -29,14 +29,14 @@ export default function StudyMode() {
   const selectedClass = selectedHand && selectedFreq ? classifyHand(selectedHand, selectedFreq, borderHands) : 'empty';
 
   if (!spot) {
-    return <div className="p-4 text-gray-400">Loading...</div>;
+    return <div className="p-4 text-gray-500">Loading...</div>;
   }
 
   return (
     <div className="p-4">
       <div className="mb-3">
         <h1 className="text-lg font-bold">Study Mode</h1>
-        <div className="text-xs text-gray-400">{spot.title}</div>
+        <div className="text-xs text-gray-500">{spot.title}</div>
       </div>
 
       <RangeMatrix
@@ -54,14 +54,14 @@ export default function StudyMode() {
         readOnly
       />
 
-      <div className="bg-gray-800 rounded-lg p-4 mt-4 text-sm">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mt-4 text-sm">
         {selectedHand && selectedFreq ? (
           <>
             <div className="flex items-center justify-between">
               <div className="text-lg font-bold">{selectedHand}</div>
-              <span className="text-xs uppercase tracking-wide text-gray-400">{selectedClass}</span>
+              <span className="text-xs uppercase tracking-wide text-gray-500">{selectedClass}</span>
             </div>
-            <div className="mt-2 space-y-1 text-gray-300">
+            <div className="mt-2 space-y-1 text-gray-700">
               {(['fold', 'call', 'raise', 'jam'] as Action[]).map((action) => (
                 <div key={action} className="flex items-center justify-between">
                   <span className="capitalize">{action}</span>
@@ -71,17 +71,17 @@ export default function StudyMode() {
             </div>
           </>
         ) : (
-          <div className="text-gray-400">Tap a hand to inspect frequencies.</div>
+          <div className="text-gray-500">Tap a hand to inspect frequencies.</div>
         )}
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-4 mt-3 text-xs text-gray-300 space-y-1">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mt-3 text-xs text-gray-700 space-y-1">
         <div><span className="font-semibold">Pure:</span> only one action {'>'} 0.</div>
         <div><span className="font-semibold">Mixed:</span> two or more actions {'>'} 0.</div>
         <div><span className="font-semibold">Border:</span> neighbor hand has different primary action.</div>
       </div>
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Back to spots
       </Link>
     </div>

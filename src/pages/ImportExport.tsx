@@ -121,22 +121,22 @@ export default function ImportExport() {
       <h1 className="text-xl font-bold mb-4">Import / Export</h1>
 
       <div className="space-y-4">
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <h2 className="font-semibold">Export full backup</h2>
-          <p className="text-sm text-gray-400">Download all spots, ranges, cards and sessions.</p>
-          <button onClick={exportAll} className="px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium hover:bg-blue-500">
+          <p className="text-sm text-gray-500">Download all spots, ranges, cards and sessions.</p>
+          <button onClick={exportAll} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
             Export all data
           </button>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <h2 className="font-semibold">Export single spot</h2>
-          <p className="text-sm text-gray-400">Export one spot with its range.</p>
+          <p className="text-sm text-gray-500">Export one spot with its range.</p>
           <div className="flex gap-2">
             <select
               value={spotId}
               onChange={(e) => setSpotId(e.target.value)}
-              className="flex-1 bg-gray-700 rounded-lg px-2 py-2 text-sm"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm"
             >
               {spots.length === 0 && <option value="">No spots</option>}
               {spots.map((spot) => (
@@ -148,30 +148,30 @@ export default function ImportExport() {
             <button
               onClick={exportSpot}
               disabled={!spotId}
-              className="px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-40"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             >
               Export spot
             </button>
           </div>
         </section>
 
-        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <h2 className="font-semibold">Import JSON</h2>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Supports full backup JSON (replace all data) and single spot JSON.
           </p>
           <input
             type="file"
             accept="application/json,.json"
             onChange={handleImport}
-            className="block text-sm text-gray-300 file:mr-2 file:px-3 file:py-2 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+            className="block text-sm text-gray-700 file:mr-2 file:px-3 file:py-2 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-500"
           />
         </section>
       </div>
 
-      {status && <div className="mt-4 text-sm text-gray-300">{status}</div>}
+      {status && <div className="mt-4 text-sm text-gray-700">{status}</div>}
 
-      <Link to="/" className="block mt-6 text-sm text-gray-400 hover:text-white">
+      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
         ← Dashboard
       </Link>
     </div>

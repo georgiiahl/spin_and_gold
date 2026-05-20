@@ -20,7 +20,7 @@ const ACTION_COLORS: Record<Action, string> = {
 };
 
 function getCellColor(freq: HandFrequencies | undefined): string {
-  if (!freq) return 'bg-gray-700';
+  if (!freq) return 'bg-gray-100';
   // Find dominant action
   const entries: [Action, number][] = [
     ['fold', freq.fold],
@@ -29,7 +29,7 @@ function getCellColor(freq: HandFrequencies | undefined): string {
     ['jam', freq.jam],
   ];
   const max = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
-  if (max[1] === 0) return 'bg-gray-700';
+  if (max[1] === 0) return 'bg-gray-100';
 
   // Check if mixed
   const nonZero = entries.filter(([, v]) => v > 0);
@@ -119,14 +119,14 @@ export default function RangeMatrix({ range, onCellAction, onCellClick, getCellC
               key={`${r}-${c}`}
               className={`aspect-square flex items-center justify-center text-[8px] sm:text-[10px] font-medium rounded-[2px] cursor-pointer
                 ${!style.background ? baseColor : ''}
-                ${hasMix ? 'ring-1 ring-white/30' : ''}
+                ${hasMix ? 'ring-1 ring-white/40' : ''}
                 ${getCellClassName?.(hand, freq) ?? ''}
                 hover:brightness-125 transition-all`}
               style={style.background ? style : undefined}
               onPointerDown={() => handlePointerDown(hand)}
               onPointerEnter={() => handlePointerEnter(hand)}
             >
-              {hand}
+              <span className={freq ? 'text-white' : 'text-gray-500'}>{hand}</span>
             </div>
           );
         })

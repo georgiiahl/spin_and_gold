@@ -16,14 +16,14 @@ type SeatLayout = {
 };
 
 const SEATS_3MAX: Record<string, SeatLayout> = {
-  BTN: { seat: [50, 80], bet: [50, 62], cards: [50, 92], dealerButton: [59, 77] },
-  SB: { seat: [18, 24], bet: [34, 40], cards: [18, 36] },
-  BB: { seat: [82, 24], bet: [66, 40], cards: [82, 36] },
+  BTN: { seat: [50, 82], bet: [50, 64], cards: [50, 70], dealerButton: [58, 79] },
+  SB: { seat: [18, 28], bet: [33, 42], cards: [30, 42] },
+  BB: { seat: [82, 28], bet: [67, 42], cards: [70, 42] },
 };
 
 const SEATS_HU: Record<string, SeatLayout> = {
-  SB: { seat: [50, 80], bet: [50, 60], cards: [50, 92], dealerButton: [59, 77] },
-  BB: { seat: [50, 16], bet: [50, 36], cards: [50, 28] },
+  SB: { seat: [50, 82], bet: [50, 63], cards: [50, 70], dealerButton: [58, 79] },
+  BB: { seat: [50, 18], bet: [50, 37], cards: [50, 31] },
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -44,9 +44,9 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
   }
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: '52%' }}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="h-[72%] w-[78%] rounded-full border border-gray-500 bg-green-900" />
+    <div className="relative mx-auto aspect-[16/9] w-full max-w-4xl">
+      <div className="absolute inset-0 flex items-center justify-center rounded-[2rem] bg-white/70 p-3 shadow-sm ring-1 ring-gray-200">
+        <div className="h-[74%] w-[80%] rounded-full border border-emerald-950/20 bg-emerald-700 shadow-inner" />
       </div>
 
       {positions.map((pos) => {
@@ -59,11 +59,10 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
           <div key={pos}>
             {showChip && (
               <div
-                className="absolute flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-[9px] font-semibold text-gray-900"
+                className="absolute flex min-h-10 min-w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white px-2 text-[9px] font-semibold text-gray-900 shadow-sm"
                 style={{
                   left: `${seat.bet[0]}%`,
                   top: `${seat.bet[1]}%`,
-                  transform: 'translate(-50%, -50%)',
                 }}
               >
                 {ACTION_LABELS[action] ?? action}
@@ -71,18 +70,18 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
             )}
 
             <div
-              className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-bold ${
-                isActing
-                  ? 'border-blue-300 bg-blue-700 text-white'
-                  : 'border-gray-500 bg-gray-700 text-gray-100'
-              }`}
-              style={{ left: `${seat.seat[0]}%`, top: `${seat.seat[1]}%` }}
-            >
+               className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-bold shadow-sm ${
+                 isActing
+                   ? 'border-blue-500 bg-white text-blue-700'
+                   : 'border-white/70 bg-gray-50 text-gray-700'
+               }`}
+               style={{ left: `${seat.seat[0]}%`, top: `${seat.seat[1]}%` }}
+             >
               {pos}
             </div>
 
             <div
-              className="absolute -translate-x-1/2 text-[11px] text-gray-300"
+              className="absolute -translate-x-1/2 rounded-full border border-white/70 bg-white/95 px-2 py-0.5 text-[11px] font-medium text-gray-700 shadow-sm"
               style={{ left: `${seat.seat[0]}%`, top: `${seat.seat[1] + 10}%` }}
             >
               {effectiveStackBb}bb
@@ -90,7 +89,7 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
 
             {seat.dealerButton && pos === (format === '3max' ? 'BTN' : 'SB') && (
               <div
-                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-[10px] font-bold text-gray-900"
+                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200 bg-amber-100 text-[10px] font-bold text-amber-700 shadow-sm"
                 style={{ left: `${seat.dealerButton[0]}%`, top: `${seat.dealerButton[1]}%` }}
               >
                 D
@@ -111,10 +110,10 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
           {cards.map((card, index) => (
             <div
               key={`${card.rank}${card.suit}-${index}`}
-              className="flex h-10 w-7 items-center justify-center rounded border border-gray-300 bg-white text-xs font-bold text-gray-900"
+              className={`flex h-12 w-9 flex-col items-center justify-center rounded-md border border-white/20 text-sm font-bold text-white shadow-md ${card.backgroundClass}`}
             >
-              <span>{card.rank}</span>
-              <span className={card.colorClass}>{card.suit}</span>
+              <span className="leading-none">{card.rank}</span>
+              <span className="leading-none text-[12px]">{card.suit}</span>
             </div>
           ))}
         </div>
@@ -126,14 +125,14 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
 type RenderCard = {
   rank: string;
   suit: string;
-  colorClass: string;
+  backgroundClass: string;
 };
 
 const SUITS = [
-  { symbol: '♠', colorClass: 'text-black' },
-  { symbol: '♥', colorClass: 'text-red-500' },
-  { symbol: '♦', colorClass: 'text-sky-500' },
-  { symbol: '♣', colorClass: 'text-green-500' },
+  { symbol: '♠', backgroundClass: 'bg-gray-900' },
+  { symbol: '♥', backgroundClass: 'bg-red-600' },
+  { symbol: '♦', backgroundClass: 'bg-blue-600' },
+  { symbol: '♣', backgroundClass: 'bg-green-700' },
 ];
 
 function buildCards(hand?: string): RenderCard[] | null {
@@ -158,7 +157,7 @@ function buildCards(hand?: string): RenderCard[] | null {
   const secondSuit = SUITS[secondSuitIndex];
 
   return [
-    { rank: rankA, suit: firstSuit.symbol, colorClass: firstSuit.colorClass },
-    { rank: rankB, suit: secondSuit.symbol, colorClass: secondSuit.colorClass },
+    { rank: rankA, suit: firstSuit.symbol, backgroundClass: firstSuit.backgroundClass },
+    { rank: rankB, suit: secondSuit.symbol, backgroundClass: secondSuit.backgroundClass },
   ];
 }

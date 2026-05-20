@@ -15,7 +15,7 @@ import Settings from '@/pages/Settings';
 
 export default function App() {
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col">
+    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col">
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/spots" element={<SpotList />} />

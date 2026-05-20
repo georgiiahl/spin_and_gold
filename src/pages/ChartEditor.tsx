@@ -65,7 +65,7 @@ export default function ChartEditor() {
   }).length;
 
   if (!spot) {
-    return <div className="p-4 text-gray-400">Loading...</div>;
+    return <div className="p-4 text-gray-500">Loading...</div>;
   }
 
   return (
@@ -73,7 +73,7 @@ export default function ChartEditor() {
       {/* Header */}
       <div className="mb-3">
         <h1 className="text-lg font-bold">{spot.title}</h1>
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-gray-500">
           {spot.format} · {spot.effectiveStackBb}bb · {spot.actingPosition}
         </div>
       </div>
@@ -83,7 +83,7 @@ export default function ChartEditor() {
         <button
           onClick={() => setMode('simple')}
           className={`px-3 py-1 rounded text-sm font-medium ${
-            mode === 'simple' ? 'bg-blue-600' : 'bg-gray-700'
+            mode === 'simple' ? 'bg-blue-600 text-white' : 'bg-gray-50 border border-gray-200 text-gray-700'
           }`}
         >
           Simple
@@ -91,7 +91,7 @@ export default function ChartEditor() {
         <button
           onClick={() => setMode('frequency')}
           className={`px-3 py-1 rounded text-sm font-medium ${
-            mode === 'frequency' ? 'bg-blue-600' : 'bg-gray-700'
+            mode === 'frequency' ? 'bg-blue-600 text-white' : 'bg-gray-50 border border-gray-200 text-gray-700'
           }`}
         >
           Frequency
@@ -126,12 +126,12 @@ export default function ChartEditor() {
 
       {/* Footer */}
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-400">{filled}/169 filled</span>
+        <span className="text-xs text-gray-500">{filled}/169 filled</span>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             className={`px-4 py-2 rounded-lg font-medium text-sm ${
-              saved ? 'bg-green-700' : 'bg-blue-600 hover:bg-blue-500'
+              saved ? 'bg-green-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
             }`}
           >
             {saved ? '✓ Saved' : 'Save'}
@@ -155,7 +155,7 @@ export default function ChartEditor() {
         />
       )}
 
-      <Link to="/spots" className="block mt-4 text-sm text-gray-400 hover:text-white">
+      <Link to="/spots" className="block mt-4 text-sm text-gray-500 hover:text-gray-900">
         ← Back to spots
       </Link>
     </div>
