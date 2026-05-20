@@ -7,6 +7,18 @@ import { getRange } from '@/storage/ranges';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const ACTION_LABELS: Record<Action, string> = { fold: 'Fold', call: 'Call', raise: 'Raise', jam: 'Jam' };
+const ACTION_BUTTON_CLASSES: Record<Action, string> = {
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
+};
+const ACTION_TEXT_CLASSES: Record<Action, string> = {
+  fold: 'text-fold',
+  call: 'text-call',
+  raise: 'text-raise',
+  jam: 'text-jam',
+};
 
 function getPrimaryAction(freq: HandFrequencies): Action {
   return ACTIONS.reduce((best, a) => (freq[a] > freq[best] ? a : best), 'fold' as Action);
@@ -133,7 +145,7 @@ export default function BorderTrainer() {
                 <button
                   key={a}
                   onClick={() => handleAnswer(a)}
-                  className={`rounded-xl bg-${a} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
+                  className={`rounded-xl ${ACTION_BUTTON_CLASSES[a]} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
                 >
                   {ACTION_LABELS[a]}
                 </button>
@@ -149,7 +161,7 @@ export default function BorderTrainer() {
               {feedback.correct ? '\u2713 Correct' : '\u2717 Wrong'}
             </div>
             <div className="text-sm text-gray-500 mb-6">
-              Primary: <span className={`text-${feedback.action} font-medium`}>{ACTION_LABELS[feedback.action]}</span>
+              Primary: <span className={`${ACTION_TEXT_CLASSES[feedback.action]} font-medium`}>{ACTION_LABELS[feedback.action]}</span>
             </div>
             <button
               onClick={next}

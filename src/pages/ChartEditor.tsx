@@ -14,6 +14,12 @@ const ACTION_LABELS: Record<Action, string> = {
   raise: 'Raise',
   jam: 'Jam',
 };
+const ACTION_BUTTON_CLASSES: Record<Action, string> = {
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
+};
 
 const EMPTY_FREQ: HandFrequencies = { fold: 0, call: 0, raise: 0, jam: 0 };
 
@@ -105,9 +111,9 @@ export default function ChartEditor() {
             <button
               key={a}
               onClick={() => setActiveAction(a)}
-              className={`flex-1 py-2 rounded font-medium text-sm bg-${a} ${
-                activeAction === a ? 'ring-2 ring-white' : 'opacity-60'
-              }`}
+               className={`flex-1 rounded py-2 text-sm font-medium text-white ${ACTION_BUTTON_CLASSES[a]} ${
+                 activeAction === a ? 'ring-2 ring-white' : 'opacity-60'
+               }`}
             >
               {ACTION_LABELS[a]}
             </button>

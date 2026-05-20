@@ -24,6 +24,18 @@ const ACTION_LABELS: Record<Action, string> = {
   raise: 'Raise',
   jam: 'Jam',
 };
+const ACTION_BUTTON_CLASSES: Record<Action, string> = {
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
+};
+const ACTION_TEXT_CLASSES: Record<Action, string> = {
+  fold: 'text-fold',
+  call: 'text-call',
+  raise: 'text-raise',
+  jam: 'text-jam',
+};
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const RECENT_HANDS_LIMIT = 8;
@@ -307,7 +319,7 @@ export default function Trainer() {
                 <button
                   key={a}
                   onClick={() => handleAnswer(a)}
-                  className={`rounded-xl bg-${a} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
+                  className={`rounded-xl ${ACTION_BUTTON_CLASSES[a]} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
                 >
                   {ACTION_LABELS[a]}
                 </button>
@@ -338,7 +350,7 @@ export default function Trainer() {
             <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 text-left text-sm shadow-sm">
               <div className="mb-2">
                 <span className="text-gray-500">You chose: </span>
-                <span className={`font-medium text-${feedback.selectedAction}`}>
+                <span className={`font-medium ${ACTION_TEXT_CLASSES[feedback.selectedAction]}`}>
                   {ACTION_LABELS[feedback.selectedAction]}
                 </span>
               </div>
@@ -351,7 +363,7 @@ export default function Trainer() {
                   <span className="text-gray-500">Frequencies: </span>
                   <div className="mt-1">
                     {ACTIONS.filter((a) => feedback.frequencies[a] > 0).map((a) => (
-                      <span key={a} className={`inline-block mr-2 text-${a}`}>
+                      <span key={a} className={`mr-2 inline-block ${ACTION_TEXT_CLASSES[a]}`}>
                         {ACTION_LABELS[a]} {(feedback.frequencies[a] * 100).toFixed(0)}%
                       </span>
                     ))}

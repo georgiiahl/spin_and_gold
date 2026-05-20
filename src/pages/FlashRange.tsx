@@ -9,6 +9,18 @@ import { loadSettings } from '@/storage/settings';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const ACTION_LABELS: Record<Action, string> = { fold: 'Fold', call: 'Call', raise: 'Raise', jam: 'Jam' };
+const ACTION_BUTTON_CLASSES: Record<Action, string> = {
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
+};
+const ACTION_TEXT_CLASSES: Record<Action, string> = {
+  fold: 'text-fold',
+  call: 'text-call',
+  raise: 'text-raise',
+  jam: 'text-jam',
+};
 
 type Phase = 'ready' | 'showing' | 'question' | 'answer';
 type Question = { hand: string; correctAction: Action };
@@ -127,7 +139,7 @@ export default function FlashRange() {
               <button
                 key={a}
                 onClick={() => handleAnswer(a)}
-                 className={`rounded-xl bg-${a} py-3 font-bold text-white transition-transform active:scale-95`}
+                 className={`rounded-xl ${ACTION_BUTTON_CLASSES[a]} py-3 font-bold text-white transition-transform active:scale-95`}
               >
                 {ACTION_LABELS[a]}
               </button>
@@ -143,7 +155,7 @@ export default function FlashRange() {
             {result === 'correct' ? '\u2713 Correct' : '\u2717 Wrong'}
           </div>
           <div className="text-sm text-gray-500 mb-6">
-            Correct: <span className={`text-${question.correctAction} font-medium`}>{ACTION_LABELS[question.correctAction]}</span>
+            Correct: <span className={`${ACTION_TEXT_CLASSES[question.correctAction]} font-medium`}>{ACTION_LABELS[question.correctAction]}</span>
           </div>
           <button
             onClick={nextRound}
