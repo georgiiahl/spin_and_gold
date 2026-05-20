@@ -7,6 +7,9 @@ import Trainer from '@/pages/Trainer';
 import FlashRange from '@/pages/FlashRange';
 import MissingCells from '@/pages/MissingCells';
 import BorderTrainer from '@/pages/BorderTrainer';
+import SpotStats from '@/pages/SpotStats';
+import GlobalStats from '@/pages/GlobalStats';
+import StudyMode from '@/pages/StudyMode';
 
 export default function App() {
   return (
@@ -17,10 +20,13 @@ export default function App() {
         <Route path="/spots/new" element={<SpotForm />} />
         <Route path="/spots/:id/edit" element={<SpotForm />} />
         <Route path="/spots/:id/range" element={<ChartEditor />} />
+        <Route path="/spots/:id/stats" element={<SpotStats />} />
+        <Route path="/spots/:id/study" element={<StudyMode />} />
         <Route path="/train/:id" element={<Trainer />} />
         <Route path="/visual/flash/:id" element={<FlashRange />} />
         <Route path="/visual/missing/:id" element={<MissingCells />} />
         <Route path="/visual/border/:id" element={<BorderTrainer />} />
+        <Route path="/stats" element={<GlobalStats />} />
       </Routes>
     </div>
   );
