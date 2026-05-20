@@ -29,6 +29,7 @@ type SpotExportPayload = {
     range: SpotRange;
   };
 };
+const FREQUENCY_SUM_TOLERANCE = 0.01;
 
 export default function ImportExport() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -192,7 +193,7 @@ function validateFrequency(freq: HandFrequencies, hand: string) {
     throw new Error(`Invalid frequencies for ${hand}.`);
   }
   const sum = values.reduce((acc, value) => acc + value, 0);
-  if (Math.abs(sum - 1) > 0.01) {
+  if (Math.abs(sum - 1) > FREQUENCY_SUM_TOLERANCE) {
     throw new Error(`Frequencies for ${hand} must sum to 1.`);
   }
 }

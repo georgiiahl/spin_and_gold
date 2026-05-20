@@ -42,7 +42,11 @@ export default function Dashboard() {
   }, [cards]);
 
   const dueCardsCount = [...dueCardsBySpot.values()].reduce((sum, count) => sum + count, 0);
-  const startSpotId = [...dueCardsBySpot.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? spots[0]?.id;
+  const startSpotId =
+    Array.from(dueCardsBySpot.entries()).reduce<[string, number] | null>(
+      (max, entry) => (entry[1] > (max?.[1] ?? 0) ? entry : max),
+      null
+    )?.[0] ?? spots[0]?.id;
 
   return (
     <div className="p-4">

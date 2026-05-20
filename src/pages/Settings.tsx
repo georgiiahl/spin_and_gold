@@ -3,15 +3,18 @@ import { Link } from 'react-router-dom';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from '@/storage/settings';
 
 export default function Settings() {
-  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [savedSettings, setSavedSettings] = useState<AppSettings>(() => loadSettings());
+  const [settings, setSettings] = useState<AppSettings>(savedSettings);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string>('');
   const hasChanges = useMemo(
-    () => JSON.stringify(settings) !== JSON.stringify(loadSettings()),
-    [settings]
+    () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
+    [settings, savedSettings]
   );
 
   function update<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
     setSaved(false);
+    setError('');
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -23,10 +26,12 @@ export default function Settings() {
       slowResponseMs: Math.max(1000, Math.round(settings.slowResponseMs)),
     };
     if (normalized.fastResponseMs >= normalized.slowResponseMs) {
-      alert('Fast threshold must be lower than slow threshold.');
+      setError('Fast response threshold must be less than slow response threshold.');
       return;
     }
+    setError('');
     saveSettings(normalized);
+    setSavedSettings(normalized);
     setSettings(normalized);
     setSaved(true);
   }
@@ -124,6 +129,8 @@ export default function Settings() {
           Reset Defaults
         </button>
       </div>
+
+      {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
 
       <Link to="/" className="block mt-6 text-sm text-gray-400 hover:text-white">
         ← Dashboard

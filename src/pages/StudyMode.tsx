@@ -26,7 +26,7 @@ export default function StudyMode() {
 
   const borderHands = useMemo(() => findBorderHands(range), [range]);
   const selectedFreq = selectedHand ? range[selectedHand] : undefined;
-  const selectedClass = selectedFreq ? classifyHand(selectedHand ?? '', selectedFreq, borderHands) : 'empty';
+  const selectedClass = selectedHand && selectedFreq ? classifyHand(selectedHand, selectedFreq, borderHands) : 'empty';
 
   if (!spot) {
     return <div className="p-4 text-gray-400">Loading...</div>;
@@ -76,8 +76,8 @@ export default function StudyMode() {
       </div>
 
       <div className="bg-gray-800 rounded-lg p-4 mt-3 text-xs text-gray-300 space-y-1">
-        <div><span className="font-semibold">Pure:</span> only one action &gt; 0.</div>
-        <div><span className="font-semibold">Mixed:</span> two or more actions &gt; 0.</div>
+        <div><span className="font-semibold">Pure:</span> only one action {'>'} 0.</div>
+        <div><span className="font-semibold">Mixed:</span> two or more actions {'>'} 0.</div>
         <div><span className="font-semibold">Border:</span> neighbor hand has different primary action.</div>
       </div>
 

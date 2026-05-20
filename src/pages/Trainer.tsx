@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Action, HandFrequencies, Spot, SessionAnswer, TrainerCard } from '@/domain/types';
 import { ALL_HANDS } from '@/domain/hands';
@@ -38,7 +38,7 @@ export default function Trainer() {
   const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const startTimeRef = useRef<number>(0);
-  const settings = loadSettings();
+  const settings = useMemo(() => loadSettings(), []);
 
   useEffect(() => {
     if (!id) return;
@@ -90,11 +90,11 @@ export default function Trainer() {
     // Pick first card
     const trainableCards = allCards.filter((card) => {
       if (!settings.includeTrashHandsInTraining) {
-        return !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0);
+        return !isTrashHand(card);
       }
       return true;
     });
-    const mixedCards = trainableCards.filter((card) => Object.values(card.frequencies).filter((v) => v > 0).length > 1);
+    const mixedCards = trainableCards.filter((card) => countNonZeroActions(card) > 1);
     const initialPool = settings.focusOnMixedHands && mixedCards.length > 0 ? mixedCards : trainableCards;
     const next = pickNextCard(initialPool.length > 0 ? initialPool : allCards);
     if (next) {
@@ -106,16 +106,11 @@ export default function Trainer() {
   function pickNext() {
     const pool = cards.filter((card) => {
       if (!settings.includeTrashHandsInTraining) {
-        const onlyFold =
-          card.frequencies.fold === 1 &&
-          card.frequencies.call === 0 &&
-          card.frequencies.raise === 0 &&
-          card.frequencies.jam === 0;
-        if (onlyFold) return false;
+        if (isTrashHand(card)) return false;
       }
       return true;
     });
-    const mixedOnly = pool.filter((card) => Object.values(card.frequencies).filter((v) => v > 0).length > 1);
+    const mixedOnly = pool.filter((card) => countNonZeroActions(card) > 1);
     const candidates = settings.focusOnMixedHands && mixedOnly.length > 0 ? mixedOnly : pool;
     const next = pickNextCard(candidates.length > 0 ? candidates : cards);
     if (next) {
@@ -312,4 +307,17 @@ export default function Trainer() {
       </Link>
     </div>
   );
+}
+
+function isTrashHand(card: TrainerCard): boolean {
+  return (
+    card.frequencies.fold === 1 &&
+    card.frequencies.call === 0 &&
+    card.frequencies.raise === 0 &&
+    card.frequencies.jam === 0
+  );
+}
+
+function countNonZeroActions(card: TrainerCard): number {
+  return Object.values(card.frequencies).reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
 }
