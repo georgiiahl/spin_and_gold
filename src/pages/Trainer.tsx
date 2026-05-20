@@ -17,7 +17,7 @@ import { getAllSessions, saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
 import { createNewCard, determineGrade, scheduleCard } from '@/domain/memory';
 import { pickNextCard } from '@/domain/priority';
-import { loadSettings } from '@/storage/settings';
+import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
 import SessionSummary from '@/components/SessionSummary';
 import { buildCategoryProgress } from '@/domain/progress';
@@ -65,7 +65,7 @@ export default function Trainer() {
   const [searchParams] = useSearchParams();
   const category = normalizeSpotCategory(searchParams.get('category') ?? undefined);
 
-  const settings = useMemo(() => loadSettings(), []);
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const [spots, setSpots] = useState<Spot[]>([]);
   const [cards, setCards] = useState<TrainerCard[]>([]);
   const [rangesBySpot, setRangesBySpot] = useState<Map<string, SpotRange>>(new Map());
@@ -138,6 +138,7 @@ export default function Trainer() {
 
   const initTrainer = useCallback(async (trainAll = false) => {
     setLoading(true);
+    setSettings(loadSettings());
     setSessionEnded(false);
     setFixMode(false);
     setForceTrainAll(trainAll);
@@ -705,7 +706,7 @@ function getPrimaryAction(freq: HandFrequencies): Action {
 }
 
 function isMixAcceptable(tolerant: boolean, trueMix: boolean, selectedAction: Action, primaryAction: Action): boolean {
-  return !tolerant && trueMix && selectedAction !== primaryAction;
+  return tolerant && trueMix && selectedAction !== primaryAction;
 }
 
 function classifyError(

@@ -14,6 +14,8 @@ const LAPSE_NEW_INTERVAL_MULT = 0.5;
 const GRADUATING_INTERVAL_DAYS = 1;
 const EASY_GRADUATING_INTERVAL_DAYS = 4;
 const MASTERED_THRESHOLD_DAYS = 21;
+const MASTERED_STREAK_THRESHOLD = 5;
+const HARD_CONSECUTIVE_ADVANCE = 2;
 
 export function createNewCard(spotId: string, hand: string, frequencies: HandFrequencies): TrainerCard {
   return {
@@ -38,6 +40,7 @@ export function createNewCard(spotId: string, hand: string, frequencies: HandFre
       dueAt: undefined,
       lapses: 0,
       learningStep: 0,
+      consecutiveHardOnStep: 0,
     },
   };
 }
@@ -75,6 +78,7 @@ function handleLearning(card: TrainerCard, grade: AnswerGrade, steps: number[]) 
   if (grade === 'again') {
     // Reset to first step
     mem.learningStep = 0;
+    mem.consecutiveHardOnStep = 0;
     mem.phase = mem.phase === 'relearning' ? 'relearning' : 'learning';
     mem.dueAt = now + steps[0] * 60_000;
   } else if (grade === 'easy') {
@@ -84,18 +88,41 @@ function handleLearning(card: TrainerCard, grade: AnswerGrade, steps: number[]) 
     mem.dueAt = now + mem.intervalDays * 86_400_000;
     mem.learningStep = 0;
   } else {
-    // hard or good — advance step
-    const advance = grade === 'good' ? 1 : 0; // hard stays same step
-    mem.learningStep = Math.min(mem.learningStep + advance, steps.length - 1);
+    if (grade === 'good') {
+      // Advance one step and reset hard counter
+      mem.consecutiveHardOnStep = 0;
+      mem.learningStep = Math.min(mem.learningStep + 1, steps.length - 1);
 
-    if (mem.learningStep >= steps.length - 1 && grade === 'good') {
-      // Graduate
-      mem.phase = 'review';
-      mem.intervalDays = GRADUATING_INTERVAL_DAYS;
-      mem.dueAt = now + mem.intervalDays * 86_400_000;
-      mem.learningStep = 0;
+      if (mem.learningStep >= steps.length - 1) {
+        // Graduate
+        mem.phase = 'review';
+        mem.intervalDays = GRADUATING_INTERVAL_DAYS;
+        mem.dueAt = now + mem.intervalDays * 86_400_000;
+        mem.learningStep = 0;
+      } else {
+        mem.dueAt = now + steps[mem.learningStep] * 60_000;
+      }
     } else {
-      mem.dueAt = now + steps[mem.learningStep] * 60_000;
+      // hard — stay on same step, but advance after 2 consecutive hard answers
+      mem.consecutiveHardOnStep = (mem.consecutiveHardOnStep ?? 0) + 1;
+
+      if (mem.consecutiveHardOnStep >= HARD_CONSECUTIVE_ADVANCE) {
+        mem.consecutiveHardOnStep = 0;
+        const nextStep = mem.learningStep + 1;
+
+        if (nextStep >= steps.length) {
+          // Graduate from last step with a longer interval
+          mem.phase = 'review';
+          mem.intervalDays = GRADUATING_INTERVAL_DAYS + 1;
+          mem.dueAt = now + mem.intervalDays * 86_400_000;
+          mem.learningStep = 0;
+        } else {
+          mem.learningStep = nextStep;
+          mem.dueAt = now + steps[mem.learningStep] * 60_000;
+        }
+      } else {
+        mem.dueAt = now + steps[mem.learningStep] * 60_000;
+      }
     }
   }
 }
@@ -131,7 +158,7 @@ function handleReview(card: TrainerCard, grade: AnswerGrade) {
     mem.dueAt = now + mem.intervalDays * 86_400_000;
 
     // Check mastered
-    if (mem.intervalDays >= MASTERED_THRESHOLD_DAYS && mem.lapses === 0) {
+    if (mem.intervalDays >= MASTERED_THRESHOLD_DAYS && (mem.lapses === 0 || card.stats.streak >= MASTERED_STREAK_THRESHOLD)) {
       mem.phase = 'mastered';
     } else {
       mem.phase = 'review';
