@@ -97,8 +97,7 @@ export default function Dashboard() {
   }, [cards, dueCardsBySpot, sessions, spots]);
 
   return (
-    <div className="mx-auto max-w-4xl p-4">
-      <h1 className="text-2xl font-bold mb-6">Spin & Gold Trainer</h1>
+    <div className="mx-auto w-full max-w-4xl">
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <div className="text-xs text-gray-500">Total spots</div>
@@ -131,7 +130,7 @@ export default function Dashboard() {
               <Link
                 key={category.name}
                 to={`/train?category=${encodeURIComponent(category.name)}`}
-                className="block rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
+                className="flex min-h-[56px] flex-col justify-center rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
               >
                   <div className="font-semibold">{category.name}</div>
                 <div className="mb-2 text-sm text-blue-100">
@@ -164,35 +163,35 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3">
         <Link
           to="/spots"
-          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Spots</div>
           <div className="text-sm text-gray-500">Manage your preflop spots</div>
         </Link>
         <Link
           to="/forecast"
-          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Forecast</div>
           <div className="text-sm text-gray-500">Workload forecast and pool breakdown</div>
         </Link>
         <Link
           to="/stats"
-          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Stats</div>
           <div className="text-sm text-gray-500">Review training performance</div>
         </Link>
         <Link
           to="/settings"
-          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Settings</div>
           <div className="text-sm text-gray-500">Trainer and visual preferences</div>
         </Link>
         <Link
           to="/import-export"
-          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
           <div className="font-semibold">Import / Export</div>
           <div className="text-sm text-gray-500">Backup and restore your data</div>

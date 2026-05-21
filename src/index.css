@@ -7,6 +7,15 @@ body {
   transition: background-color 250ms ease;
 }
 
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}
+
 body.feedback-flash-correct {
   background-color: rgba(16, 185, 129, 0.2);
 }

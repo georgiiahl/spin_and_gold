@@ -1,5 +1,4 @@
 import { ChangeEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { isValidHand } from '@/domain/hands';
 import { HandFrequencies, SessionAnswer, Spot, SpotRange, TrainerCard } from '@/domain/types';
 import { getAllCards } from '@/storage/cards';
@@ -146,7 +145,7 @@ export default function ImportExport() {
   }
 
   return (
-    <div className="p-4">
+    <div className="mx-auto w-full max-w-4xl">
       <h1 className="text-xl font-bold mb-4">Import / Export</h1>
 
       <div className="space-y-4">
@@ -215,9 +214,6 @@ export default function ImportExport() {
 
       {status && <div className="mt-4 text-sm text-gray-700">{status}</div>}
 
-      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
-        ← Dashboard
-      </Link>
     </div>
   );
 }

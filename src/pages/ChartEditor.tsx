@@ -71,11 +71,11 @@ export default function ChartEditor() {
   }).length;
 
   if (!spot) {
-    return <div className="p-4 text-gray-500">Loading...</div>;
+    return <div className="text-gray-500">Loading...</div>;
   }
 
   return (
-    <div className="p-4">
+    <div className="mx-auto w-full max-w-4xl">
       {/* Header */}
       <div className="mb-3">
         <h1 className="text-lg font-bold">{spot.title}</h1>

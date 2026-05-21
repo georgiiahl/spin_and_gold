@@ -68,12 +68,12 @@ export default function MissingCells() {
     return f && f[action] > 0;
   }).length;
 
-  if (!spot) return <div className="p-4 text-gray-500">Loading...</div>;
+  if (!spot) return <div className="text-gray-500">Loading...</div>;
 
   const hasStarted = hiddenHands.size > 0;
 
   return (
-    <div className="mx-auto max-w-5xl p-4">
+    <div className="mx-auto w-full max-w-5xl">
       <div className="mb-3">
         <h1 className="text-lg font-bold">Missing Cells</h1>
         <div className="text-xs text-gray-500">{spot.title}</div>

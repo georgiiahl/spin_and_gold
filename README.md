@@ -81,6 +81,29 @@ npm run preview
 2. Use **Install App** (desktop) or **Add to Home Screen** (mobile).
 3. The app shell is cached by the service worker for offline startup.
 
+## Replacing App Icons
+
+Replace these files in `public/` with your own PNGs using the same filenames and sizes:
+
+- `public/apple-touch-icon.png` (180×180)
+- `public/icon-192.png` (192×192)
+- `public/icon-512.png` (512×512)
+
+Platform notes:
+
+- **iPhone (Add to Home Screen):** uses `apple-touch-icon.png`
+- **Android (PWA install):** uses `icon-192.png` and `icon-512.png` from the web app manifest
+
+You can generate assets with tools like https://realfavicongenerator.net, or just replace the PNGs manually with matching dimensions.
+
+After replacing icons:
+
+```bash
+npm run build
+```
+
+Then redeploy the updated build.
+
 ## Capacitor mobile wrapper
 
 Capacitor dependencies and config are included.

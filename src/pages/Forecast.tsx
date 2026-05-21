@@ -1,5 +1,5 @@
+import { Disclosure } from '@headlessui/react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getAllCards } from '@/storage/cards';
 import { getAllRanges } from '@/storage/ranges';
 import { getAllSpots } from '@/storage/spots';
@@ -71,15 +71,15 @@ function DailyChart({ days }: { days: ForecastDay[] }) {
   const maxCount = Math.max(...days.map((d) => d.dueCount), 1);
   return (
     <div className="overflow-x-auto">
-      <div className="flex min-w-0 items-end gap-1" style={{ minWidth: `${days.length * 36}px` }}>
+      <div className="flex min-w-0 items-end gap-2" style={{ minWidth: `${days.length * 48}px` }}>
         {days.map((day) => {
           const heightPct = (day.dueCount / maxCount) * 100;
-          const label = day.date.slice(5); // MM-DD
+          const label = day.date.slice(5);
           return (
-            <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
+            <div key={day.date} className="flex w-10 shrink-0 flex-col items-center gap-1">
               <div className="text-xs text-gray-500">{day.dueCount}</div>
-              <div className="w-full" style={{ height: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                <div className="w-full overflow-hidden rounded-t" style={{ height: `${heightPct}%`, minHeight: day.dueCount > 0 ? '4px' : '0' }}>
+              <div className="w-full" style={{ height: '88px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div className="w-full overflow-hidden rounded-t" style={{ height: `${heightPct}%`, minHeight: day.dueCount > 0 ? '6px' : '0' }}>
                   {day.dueCount > 0 && (
                     <div className="flex h-full flex-col-reverse">
                       {day.reviewDue > 0 && (
@@ -108,39 +108,43 @@ function DailyChart({ days }: { days: ForecastDay[] }) {
 }
 
 function CategoryRow({ cat }: { cat: CategoryForecast }) {
-  const [expanded, setExpanded] = useState(false);
+  const healthColorClass = cat.dueToday <= 10
+    ? 'border-emerald-400'
+    : cat.dueToday <= 30
+      ? 'border-yellow-400'
+      : 'border-red-400';
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <button
-        className="flex w-full items-center justify-between p-3 text-left"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div>
-          <div className="font-medium">{cat.categoryName}</div>
-          <div className="text-xs text-gray-500">
-            {cat.spotCount} spot{cat.spotCount !== 1 ? 's' : ''} · {cat.totalCards} cards
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-right">
-          <div>
-            <div className="text-sm font-semibold text-red-600">{cat.dueToday} today</div>
-            <div className="text-xs text-gray-500">{cat.dueThisWeek} this week</div>
-          </div>
-          <span className="text-gray-400">{expanded ? '▲' : '▼'}</span>
-        </div>
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-100 p-3 text-sm">
-          <div className="mb-2">
-            <PoolBar dist={cat.poolDistribution} total={cat.totalCards} />
-          </div>
-          <PoolLegend dist={cat.poolDistribution} total={cat.totalCards} />
-          <div className="mt-2 text-xs text-gray-500">
-            Est. daily review load: <span className="font-medium text-gray-700">{cat.estimatedDailyLoad}</span> cards/day
-          </div>
-        </div>
+    <Disclosure as="div" className={`rounded-lg border border-l-4 border-gray-200 bg-white shadow-sm ${healthColorClass}`}>
+      {({ open }) => (
+        <>
+          <Disclosure.Button className="flex w-full items-center justify-between p-3 text-left">
+            <div>
+              <div className="font-medium">{cat.categoryName}</div>
+              <div className="text-xs text-gray-500">
+                {cat.spotCount} spot{cat.spotCount !== 1 ? 's' : ''} · {cat.totalCards} cards
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-right">
+              <div>
+                <div className="text-sm font-semibold text-red-600">{cat.dueToday} today</div>
+                <div className="text-xs text-gray-500">{cat.dueThisWeek} this week</div>
+              </div>
+              <span className="text-gray-400">{open ? '▲' : '▼'}</span>
+            </div>
+          </Disclosure.Button>
+          <Disclosure.Panel className="border-t border-gray-100 p-3 text-sm">
+            <div className="mb-2">
+              <PoolBar dist={cat.poolDistribution} total={cat.totalCards} />
+            </div>
+            <PoolLegend dist={cat.poolDistribution} total={cat.totalCards} />
+            <div className="mt-2 text-xs text-gray-500">
+              Est. daily review load: <span className="font-medium text-gray-700">{cat.estimatedDailyLoad}</span> cards/day
+            </div>
+          </Disclosure.Panel>
+        </>
       )}
-    </div>
+    </Disclosure>
   );
 }
 
@@ -153,26 +157,26 @@ function WorkloadEstimator({ forecast }: { forecast: OverallForecast }) {
   const net = dailyCapacity - dailyNewDue;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 font-semibold">Workload Estimator</h3>
+    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+      <h3 className="mb-3 font-semibold text-blue-900">Workload Estimator</h3>
       <div className="mb-3 flex items-center gap-3">
-        <label className="text-sm text-gray-600 whitespace-nowrap">Cards per day:</label>
+        <label className="whitespace-nowrap text-sm text-blue-900">Cards per day:</label>
         <input
           type="number"
           min={1}
           max={10000}
           value={dailyCapacity}
           onChange={(e) => setDailyCapacity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-          className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+          className="w-24 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
         />
       </div>
       <div className="space-y-1 text-sm">
         <div>
-          <span className="text-gray-600">Est. daily reviews due: </span>
+          <span className="text-blue-800">Est. daily reviews due: </span>
           <span className="font-medium">{dailyNewDue} cards/day</span>
         </div>
         <div>
-          <span className="text-gray-600">Current backlog: </span>
+          <span className="text-blue-800">Current backlog: </span>
           <span className="font-medium">{backlog} cards</span>
         </div>
         <div className={`font-medium ${net > 0 ? 'text-emerald-600' : net < 0 ? 'text-red-600' : 'text-gray-700'}`}>
@@ -220,7 +224,7 @@ export default function Forecast() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl p-4">
+      <div className="mx-auto w-full max-w-4xl">
         <div className="text-gray-500">Loading forecast…</div>
       </div>
     );
@@ -231,45 +235,45 @@ export default function Forecast() {
   const totalActive = forecast.activeCards;
 
   return (
-    <div className="mx-auto max-w-4xl p-4 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <div>
         <h1 className="text-2xl font-bold">Forecast</h1>
-        <Link to="/" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
+        <p className="mt-1 text-sm text-gray-600">
+          You have {forecast.dueToday} cards due today across {forecast.categories.length} categories.
+        </p>
       </div>
 
-      {/* Summary */}
-      <div>
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-2 font-semibold text-gray-700">Summary</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Total cards</div>
             <div className="text-lg font-semibold">{forecast.totalCards}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Active cards</div>
             <div className="text-lg font-semibold">{forecast.activeCards}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Due today</div>
             <div className="text-lg font-semibold text-red-600">{forecast.dueToday}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Due tomorrow</div>
             <div className="text-lg font-semibold">{forecast.dueTomorrow}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Due this week</div>
             <div className="text-lg font-semibold">{forecast.dueThisWeek}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-500">Due this month</div>
             <div className="text-lg font-semibold">{forecast.dueThisMonth}</div>
           </div>
         </div>
       </div>
 
-      {/* Pool distribution */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 font-semibold text-gray-700">Pool Distribution</h2>
         <div className="mb-2">
           <PoolBar dist={forecast.poolDistribution} total={totalActive} />
@@ -277,8 +281,7 @@ export default function Forecast() {
         <PoolLegend dist={forecast.poolDistribution} total={totalActive} />
       </div>
 
-      {/* Forecast chart */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-1 font-semibold text-gray-700">14-Day Forecast</h2>
         <p className="mb-3 text-xs text-gray-500">
           Expected cards due per day based on current scheduling data.
@@ -292,10 +295,8 @@ export default function Forecast() {
         </div>
       </div>
 
-      {/* Workload estimator */}
       <WorkloadEstimator forecast={forecast} />
 
-      {/* Per-category breakdown */}
       {forecast.categories.length > 0 && (
         <div>
           <h2 className="mb-2 font-semibold text-gray-700">

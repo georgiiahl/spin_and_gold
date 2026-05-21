@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { SessionAnswer, TrainerCard } from '@/domain/types';
 import { getAllCards } from '@/storage/cards';
 import { getAllSessions } from '@/storage/sessions';
@@ -26,14 +25,14 @@ export default function GlobalStats() {
     });
   }, []);
 
-  if (loading) return <div className="p-4 text-gray-500">Loading...</div>;
+  if (loading) return <div className="text-gray-500">Loading...</div>;
 
   const stats = computeSpotStats(sessions, cards);
   const hardestHands = getHardestHands(sessions);
   const totalErrors = [...getErrorHeatmap(sessions).values()].reduce((sum, count) => sum + count, 0);
 
   return (
-    <div className="p-4">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="mb-4">
         <h1 className="text-xl font-bold">Global Statistics</h1>
         <div className="text-xs text-gray-500">All spots</div>
@@ -93,9 +92,6 @@ export default function GlobalStats() {
         </section>
       </div>
 
-      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
-        ← Dashboard
-      </Link>
     </div>
   );
 }
