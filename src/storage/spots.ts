@@ -18,7 +18,18 @@ export async function saveSpot(spot: Spot): Promise<void> {
 
 export async function deleteSpot(id: string): Promise<void> {
   const db = await getDB();
-  await db.delete('spots', id);
+  const tx = db.transaction(['spots', 'cards', 'sessions'], 'readwrite');
+  await tx.objectStore('spots').delete(id);
+
+  const cardsStore = tx.objectStore('cards');
+  const cardIds = await cardsStore.index('by-spot').getAllKeys(id);
+  await Promise.all(cardIds.map((cardId) => cardsStore.delete(cardId)));
+
+  const sessionsStore = tx.objectStore('sessions');
+  const sessionIds = await sessionsStore.index('by-spot').getAllKeys(id);
+  await Promise.all(sessionIds.map((sessionId) => sessionsStore.delete(sessionId)));
+
+  await tx.done;
 }
 
 export async function getSpotsByCategory(category: string): Promise<Spot[]> {

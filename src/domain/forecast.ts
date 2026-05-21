@@ -111,9 +111,11 @@ export function computeForecast(
   rangesBySpot?: Map<string, SpotRange>
 ): OverallForecast {
   const now = Date.now();
+  const spotById = new Map(spots.map((s) => [s.id, s]));
+  const cardsWithExistingSpot = cards.filter((card) => spotById.has(card.spotId));
 
   // Filter active cards (based on settings)
-  const activeCards = filterTrainableCards(cards, settings);
+  const activeCards = filterTrainableCards(cardsWithExistingSpot, settings);
 
   // Pool classification
   const poolDistribution: Record<'problem' | 'learning' | 'review' | 'new' | 'mastered', number> = {
@@ -187,7 +189,6 @@ export function computeForecast(
   }
 
   // Per-category forecasts
-  const spotById = new Map(spots.map((s) => [s.id, s]));
   const cardsByCategory = new Map<string, TrainerCard[]>();
   const spotsByCategory = new Map<string, Set<string>>();
 
@@ -248,7 +249,7 @@ export function computeForecast(
   const dailyGrowthRate = estimatedDailyDue;
 
   return {
-    totalCards: cards.length,
+    totalCards: cardsWithExistingSpot.length,
     activeCards: activeCards.length,
     dueToday,
     dueTomorrow,
