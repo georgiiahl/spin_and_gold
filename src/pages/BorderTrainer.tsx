@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Action, HandFrequencies, SpotRange, Spot } from '@/domain/types';
-import { ALL_HANDS, HAND_MATRIX, getHandPosition } from '@/domain/hands';
+import { ALL_HANDS } from '@/domain/hands';
+import { isBorderHand } from '@/domain/border';
 import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 
@@ -26,51 +27,7 @@ function getPrimaryAction(freq: HandFrequencies): Action {
 
 /** Find border hands: hands whose neighbors have a different primary action */
 function findBorderHands(range: SpotRange): string[] {
-  const borders: string[] = [];
-
-  for (const hand of ALL_HANDS) {
-    const freq = range[hand];
-    if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
-
-    const pos = getHandPosition(hand);
-    if (!pos) continue;
-
-    const myAction = getPrimaryAction(freq);
-    const neighbors = [
-      [pos.row - 1, pos.col],
-      [pos.row + 1, pos.col],
-      [pos.row, pos.col - 1],
-      [pos.row, pos.col + 1],
-    ];
-
-    let isBorder = false;
-    for (const [r, c] of neighbors) {
-      if (r < 0 || r >= 13 || c < 0 || c >= 13) continue;
-      // Get hand at that position
-      const neighborHand = getHandAt(r, c);
-      if (!neighborHand) continue;
-      const nFreq = range[neighborHand];
-      if (!nFreq || (nFreq.fold + nFreq.call + nFreq.raise + nFreq.jam) === 0) continue;
-      const nAction = getPrimaryAction(nFreq);
-      if (nAction !== myAction) {
-        isBorder = true;
-        break;
-      }
-    }
-
-    // Also include mixed hands
-    const nonZero = Object.values(freq).filter((v) => v > 0).length;
-    if (isBorder || nonZero > 1) {
-      borders.push(hand);
-    }
-  }
-
-  return borders;
-}
-
-function getHandAt(row: number, col: number): string | null {
-  if (row < 0 || row >= 13 || col < 0 || col >= 13) return null;
-  return HAND_MATRIX[row][col];
+  return ALL_HANDS.filter((hand) => isBorderHand(hand, range));
 }
 
 export default function BorderTrainer() {

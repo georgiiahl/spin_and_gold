@@ -5,6 +5,7 @@ export type AppSettings = {
   showFrequenciesInFeedback: boolean;
   includeTrashHandsInTraining: boolean;
   focusOnMixedHands: boolean;
+  showMixButton: boolean;
   mixStrategy: 'strict' | 'tolerant';
   mixThreshold: number;
   desiredRetention: number;
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showFrequenciesInFeedback: true,
   includeTrashHandsInTraining: false,
   focusOnMixedHands: false,
+  showMixButton: false,
   mixStrategy: 'strict',
   mixThreshold: 0.60,
   desiredRetention: 0.9,

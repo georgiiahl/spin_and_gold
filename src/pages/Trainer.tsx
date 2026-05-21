@@ -24,6 +24,7 @@ import {
   isSpotOnCooldown,
   REVIEW_SAMPLE_EVERY_N,
 } from '@/domain/priority';
+import { BalancedAnswer, scoreBalancedAnswer } from '@/domain/scoring';
 import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
 import { FeedbackKind, triggerFeedback } from '@/domain/feedback';
@@ -65,10 +66,12 @@ type FeedbackState = {
   kind: FeedbackKind;
   isCorrect: boolean;
   isMixedCorrect: boolean;
-  selectedAction: Action;
+  selectedAction?: Action;
   correctActions: Action[];
   primaryAction: Action;
   frequencies: HandFrequencies;
+  balancedAnswer?: BalancedAnswer;
+  balancedScore?: number;
   confusedWithSpot?: Spot;
 } | null;
 
@@ -99,6 +102,8 @@ export default function Trainer() {
   const [trainingCategoryLabel, setTrainingCategoryLabel] = useState('Category');
   const [highlightStack, setHighlightStack] = useState(false);
   const [highlightPosition, setHighlightPosition] = useState(false);
+  const [showMixAllocation, setShowMixAllocation] = useState(false);
+  const [mixAllocations, setMixAllocations] = useState<Partial<Record<Action, number>>>({});
 
   // Retry queue: cards that were answered wrong, come back after a time delay
   const retryQueueRef = useRef<Array<{ card: TrainerCard; retryAfterTimestamp: number }>>([]);
@@ -164,6 +169,8 @@ export default function Trainer() {
     setBarRevealed(false);
     setSessionCount(0);
     setCorrectCount(0);
+    setShowMixAllocation(false);
+    setMixAllocations({});
     retryQueueRef.current = [];
     retryAttemptsRef.current = new Map();
     cardCountRef.current = 0;
@@ -252,12 +259,16 @@ export default function Trainer() {
     setRangesBySpot(rangeMap);
     setCards(allCards);
 
-    const trainable = filterTrainableCards(allCards, settings.includeTrashHandsInTraining);
+    const trainable = filterTrainableCards(
+      allCards,
+      settings.includeTrashHandsInTraining,
+      settings.focusOnMixedHands
+    );
     const first = pickFromPools(trainable, 0);
     if (first) showCard(first);
 
     setLoading(false);
-  }, [category, id, settings.includeTrashHandsInTraining]);
+  }, [category, id, settings.focusOnMixedHands, settings.includeTrashHandsInTraining]);
 
   useEffect(() => {
     initTrainer();
@@ -267,6 +278,8 @@ export default function Trainer() {
     setCurrentCard(card);
     setFeedback(null);
     setBarRevealed(false);
+    setShowMixAllocation(false);
+    setMixAllocations({});
     startTimeRef.current = Date.now();
     recentHandsRef.current = [...recentHandsRef.current, card.hand].slice(-RECENT_HANDS_LIMIT);
     lastShownSpotIdsRef.current = [...lastShownSpotIdsRef.current, card.spotId].slice(-RECENT_SPOTS_LIMIT);
@@ -277,7 +290,13 @@ export default function Trainer() {
     const candidates = [...pool];
 
     while (candidates.length > 0) {
-      const picked = pickNextCard(candidates, recentHandsRef.current, lastShownSpotIdsRef.current);
+      const picked = pickNextCard(
+        candidates,
+        recentHandsRef.current,
+        lastShownSpotIdsRef.current,
+        settings.focusOnMixedHands,
+        rangesBySpot
+      );
       if (!picked) return null;
 
       if (!isSpotOnCooldown(picked.spotId, lastShownSpotIdsRef.current, settings.sameSpotCooldown)) {
@@ -377,12 +396,136 @@ export default function Trainer() {
     setFeedback(null);
     cardCountRef.current += 1;
 
-    const trainable = filterTrainableCards(cards, settings.includeTrashHandsInTraining);
+    const trainable = filterTrainableCards(
+      cards,
+      settings.includeTrashHandsInTraining,
+      settings.focusOnMixedHands
+    );
     const next = pickFromPools(trainable, cardCountRef.current);
     if (next) {
       showCard(next);
     }
   }
+
+  function startMixAllocation() {
+    if (!currentCard) return;
+    const nextAllocations: Partial<Record<Action, number>> = {};
+    for (const action of ACTIONS) {
+      if (currentCard.frequencies[action] > 0) {
+        nextAllocations[action] = currentCard.frequencies[action] * 100;
+      }
+    }
+    setMixAllocations(nextAllocations);
+    setShowMixAllocation(true);
+  }
+
+  function adjustMixAllocation(action: Action, direction: -1 | 1) {
+    setMixAllocations((prev) => {
+      const current = prev[action] ?? 0;
+      const next = Math.max(0, Math.min(100, current + direction * 25));
+      return { ...prev, [action]: next };
+    });
+  }
+
+  const commitAnswer = useCallback(async (params: {
+    grade: SessionAnswer['grade'];
+    isCorrect: boolean;
+    isMixedCorrect: boolean;
+    responseTimeMs: number;
+    correctActions: Action[];
+    primaryAction: Action;
+    sessionSelectedAction: Action;
+    feedbackSelectedAction?: Action;
+    feedbackKind: FeedbackKind;
+    errorType?: SessionAnswer['errorType'];
+    confusedWithSpot?: Spot;
+    balancedAnswer?: BalancedAnswer;
+    balancedScore?: number;
+  }) => {
+    if (!currentCard) return;
+
+    const updatedCard = scheduleCard(currentCard, params.grade, { desiredRetention: settings.desiredRetention });
+    updatedCard.stats.shown += 1;
+    if (params.isCorrect) {
+      updatedCard.stats.correct += 1;
+      updatedCard.stats.streak += 1;
+      retryAttemptsRef.current.delete(updatedCard.id);
+      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
+    } else {
+      updatedCard.stats.wrong += 1;
+      updatedCard.stats.streak = 0;
+
+      const attempt = (retryAttemptsRef.current.get(updatedCard.id) ?? 0) + 1;
+      retryAttemptsRef.current.set(updatedCard.id, attempt);
+      const delaySec = getRetryDelaySeconds(attempt, settings.retryMinDelaySec);
+
+      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
+      retryQueueRef.current.push({
+        card: updatedCard,
+        retryAfterTimestamp: Date.now() + delaySec * 1000,
+      });
+    }
+
+    const n = updatedCard.stats.shown;
+    updatedCard.stats.avgResponseMs = Math.round(
+      ((updatedCard.stats.avgResponseMs * (n - 1)) + params.responseTimeMs) / n
+    );
+
+    const answer: SessionAnswer = {
+      spotId: currentCard.spotId,
+      hand: currentCard.hand,
+      selectedAction: params.sessionSelectedAction,
+      correctActions: params.correctActions,
+      primaryAction: params.primaryAction,
+      isCorrect: params.isCorrect,
+      isMixedCorrect: params.isMixedCorrect,
+      responseTimeMs: params.responseTimeMs,
+      grade: params.grade,
+      balancedAnswer: params.balancedAnswer,
+      balancedScore: params.balancedScore,
+      timestamp: Date.now(),
+      errorType: params.errorType,
+    };
+
+    const structuralDifficulty = updatedCard.memory.structuralDifficulty ?? updatedCard.memory.difficulty;
+    updatedCard.memory.difficulty = recalibrateCardDifficulty(
+      updatedCard,
+      [...sessionHistoryRef.current, answer],
+      structuralDifficulty
+    );
+    sessionHistoryRef.current = [...sessionHistoryRef.current, answer];
+
+    await saveCard(updatedCard);
+    await saveSession(answer);
+
+    setShowMixAllocation(false);
+    setFeedback({
+      kind: params.feedbackKind,
+      isCorrect: params.isCorrect,
+      isMixedCorrect: params.isMixedCorrect,
+      selectedAction: params.feedbackSelectedAction,
+      correctActions: params.correctActions,
+      primaryAction: params.primaryAction,
+      frequencies: currentCard.frequencies,
+      confusedWithSpot: params.confusedWithSpot,
+      balancedAnswer: params.balancedAnswer,
+      balancedScore: params.balancedScore,
+    });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setBarRevealed(true));
+    });
+
+    triggerFeedback(params.feedbackKind, {
+      feedbackSounds: settings.feedbackSounds,
+      feedbackVibration: settings.feedbackVibration,
+    });
+
+    setSessionCount((c) => c + 1);
+    if (params.isCorrect) setCorrectCount((c) => c + 1);
+
+    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
+  }, [currentCard, settings.desiredRetention, settings.feedbackSounds, settings.feedbackVibration, settings.retryMinDelaySec]);
 
   const handleAnswer = useCallback(async (action: Action) => {
     if (!currentCard || !currentSpot) return;
@@ -403,7 +546,6 @@ export default function Trainer() {
         : action === primaryAction;
 
     const isMixedCorrect = isCorrect && action !== primaryAction;
-
     const errorClassification = !isCorrect
       ? classifyError(action, currentSpot, currentCard.hand, spots, rangesBySpot)
       : { type: 'wrong' as const };
@@ -427,33 +569,6 @@ export default function Trainer() {
     });
     const grade = !isCorrect && errorClassification.type === 'depth_confusion' ? 'hard' : baseGrade;
 
-    const updatedCard = scheduleCard(currentCard, grade, { desiredRetention: settings.desiredRetention });
-    updatedCard.stats.shown += 1;
-    if (isCorrect) {
-      updatedCard.stats.correct += 1;
-      updatedCard.stats.streak += 1;
-      retryAttemptsRef.current.delete(updatedCard.id);
-      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
-    } else {
-      updatedCard.stats.wrong += 1;
-      updatedCard.stats.streak = 0;
-
-      const attempt = (retryAttemptsRef.current.get(updatedCard.id) ?? 0) + 1;
-      retryAttemptsRef.current.set(updatedCard.id, attempt);
-      const delaySec = getRetryDelaySeconds(attempt, settings.retryMinDelaySec);
-
-      // Add to retry queue — will come back after a time delay
-      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
-      retryQueueRef.current.push({
-        card: updatedCard,
-        retryAfterTimestamp: Date.now() + delaySec * 1000,
-      });
-    }
-    const n = updatedCard.stats.shown;
-    updatedCard.stats.avgResponseMs = Math.round(
-      ((updatedCard.stats.avgResponseMs * (n - 1)) + responseTimeMs) / n
-    );
-
     let errorType: SessionAnswer['errorType'];
     if (!isCorrect) {
       if (errorClassification.type === 'depth_confusion') errorType = 'depth_confusion';
@@ -461,56 +576,47 @@ export default function Trainer() {
       else errorType = 'wrong_action';
     }
 
-    const answer: SessionAnswer = {
-      spotId: currentCard.spotId,
-      hand: currentCard.hand,
-      selectedAction: action,
-      correctActions,
-      primaryAction,
+    await commitAnswer({
+      grade,
       isCorrect,
       isMixedCorrect,
       responseTimeMs,
-      grade,
-      timestamp: Date.now(),
-      errorType,
-    };
-
-    const structuralDifficulty = updatedCard.memory.structuralDifficulty ?? updatedCard.memory.difficulty;
-    updatedCard.memory.difficulty = recalibrateCardDifficulty(
-      updatedCard,
-      [...sessionHistoryRef.current, answer],
-      structuralDifficulty
-    );
-    sessionHistoryRef.current = [...sessionHistoryRef.current, answer];
-
-    await saveCard(updatedCard);
-    await saveSession(answer);
-
-    setFeedback({
-      kind: feedbackKind,
-      isCorrect,
-      isMixedCorrect,
-      selectedAction: action,
       correctActions,
       primaryAction,
-      frequencies: freq,
+      sessionSelectedAction: action,
+      feedbackSelectedAction: action,
+      feedbackKind,
+      errorType,
       confusedWithSpot: errorClassification.confusedWithSpot,
     });
+  }, [commitAnswer, currentCard, currentSpot, rangesBySpot, settings.fastResponseMs, settings.mixStrategy, settings.mixThreshold, settings.slowResponseMs, spots]);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setBarRevealed(true));
+  const handleBalancedAnswer = useCallback(async () => {
+    if (!currentCard) return;
+
+    const correctActions = ACTIONS.filter((a) => currentCard.frequencies[a] > 0);
+    const total = correctActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
+    if (total !== 100) return;
+
+    const balancedAnswer: BalancedAnswer = { allocations: mixAllocations };
+    const { score, grade } = scoreBalancedAnswer(balancedAnswer, currentCard.frequencies);
+    const primaryAction = getPrimaryAction(currentCard.frequencies);
+    const isCorrect = grade !== 'again';
+    const feedbackKind: FeedbackKind = isCorrect ? 'correct' : 'wrong';
+
+    await commitAnswer({
+      grade,
+      isCorrect,
+      isMixedCorrect: false,
+      responseTimeMs: Date.now() - startTimeRef.current,
+      correctActions,
+      primaryAction,
+      sessionSelectedAction: primaryAction,
+      feedbackKind,
+      balancedAnswer,
+      balancedScore: score,
     });
-
-    triggerFeedback(feedbackKind, {
-      feedbackSounds: settings.feedbackSounds,
-      feedbackVibration: settings.feedbackVibration,
-    });
-
-    setSessionCount((c) => c + 1);
-    if (isCorrect) setCorrectCount((c) => c + 1);
-
-    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
-  }, [currentCard, currentSpot, rangesBySpot, settings, spots]);
+  }, [commitAnswer, currentCard, mixAllocations]);
 
   // --- Live stats ---
   const accuracy = sessionCount > 0 ? Math.round((correctCount / sessionCount) * 100) : 0;
@@ -545,9 +651,12 @@ export default function Trainer() {
     );
   }
 
-  const userAnswerBarPosition = feedback
+  const userAnswerBarPosition = feedback?.selectedAction
     ? getBarPosition(feedback.frequencies, feedback.selectedAction)
     : 0;
+  const mixedActions = currentCard ? ACTIONS.filter((a) => currentCard.frequencies[a] > 0) : [];
+  const isMixedHand = mixedActions.length >= 2;
+  const mixAllocationTotal = mixedActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
 
   return (
     <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
@@ -587,7 +696,7 @@ export default function Trainer() {
                 ))}
               </div>
             )}
-            {feedback && barRevealed && (
+            {feedback && feedback.selectedAction && barRevealed && (
               <div
                 className="absolute top-0 h-full w-0.5 bg-white shadow transition-all duration-500"
                 style={{ left: `${userAnswerBarPosition}%` }}
@@ -607,7 +716,7 @@ export default function Trainer() {
         </div>
 
         {/* Action / Feedback area — fixed height */}
-        <div className="mt-4 h-[130px] w-full">
+        <div className="mt-4 min-h-[130px] w-full">
           {currentCard && !feedback && (
             <div className="flex h-full flex-col justify-center">
               <div className="flex gap-3" role="group" aria-label="Action buttons">
@@ -621,7 +730,56 @@ export default function Trainer() {
                     {ACTION_LABELS[action]}
                   </button>
                 ))}
+                {settings.showMixButton && isMixedHand && (
+                  <button
+                    onClick={startMixAllocation}
+                    aria-label="Mix action"
+                    className="flex-1 rounded-xl bg-purple-600 py-4 text-base font-bold text-white active:scale-95"
+                  >
+                    Mix
+                  </button>
+                )}
               </div>
+              {showMixAllocation && settings.showMixButton && isMixedHand && (
+                <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50 p-3">
+                  <div className="space-y-2">
+                    {mixedActions.map((action) => (
+                      <div key={action} className="flex items-center justify-between gap-3">
+                        <span className={`${ACTION_TEXT_CLASSES[action]} text-sm font-semibold`}>{ACTION_LABELS[action]}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => adjustMixAllocation(action, -1)}
+                            className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
+                          >
+                            −
+                          </button>
+                          <span className="w-12 text-center text-sm font-semibold text-gray-700">
+                            {mixAllocations[action] ?? 0}%
+                          </span>
+                          <button
+                            onClick={() => adjustMixAllocation(action, 1)}
+                            className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className={`text-xs font-medium ${mixAllocationTotal === 100 ? 'text-green-700' : 'text-red-600'}`}>
+                      Total: {mixAllocationTotal}%
+                    </span>
+                    <button
+                      onClick={handleBalancedAnswer}
+                      disabled={mixAllocationTotal !== 100}
+                      className="rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -635,12 +793,28 @@ export default function Trainer() {
                 }`}>
                   {feedback.isCorrect ? '✓' : feedback.kind === 'depth_confusion' ? '⚠' : '✗'}
                 </span>
-                {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
+                {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && feedback.selectedAction && (
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
                     {ACTION_LABELS[feedback.selectedAction]} → {feedback.confusedWithSpot.effectiveStackBb}bb
                   </span>
                 )}
               </div>
+              {feedback.balancedAnswer && (
+                <div className="space-y-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+                  {ACTIONS.filter((action) => feedback.frequencies[action] > 0).map((action) => (
+                    <div key={action} className="flex items-center justify-between gap-4">
+                      <span className={`${ACTION_TEXT_CLASSES[action]} font-medium`}>{ACTION_LABELS[action]}</span>
+                      <span className="text-gray-600">
+                        You {feedback.balancedAnswer?.allocations[action] ?? 0}% ·
+                        {' '}Actual {(feedback.frequencies[action] * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  ))}
+                  {typeof feedback.balancedScore === 'number' && (
+                    <div className="pt-1 font-medium text-gray-700">Score: {(feedback.balancedScore * 100).toFixed(0)}%</div>
+                  )}
+                </div>
+              )}
 
               <button
                 onClick={pickNext}
@@ -678,9 +852,18 @@ function getBarPosition(freq: HandFrequencies, action: Action): number {
   return position;
 }
 
-function filterTrainableCards(cards: TrainerCard[], includeTrash: boolean): TrainerCard[] {
+function filterTrainableCards(cards: TrainerCard[], includeTrash: boolean, focusMixed: boolean): TrainerCard[] {
   if (includeTrash) return cards;
-  return cards.filter((c) => !(c.frequencies.fold === 1 && c.frequencies.call === 0 && c.frequencies.raise === 0 && c.frequencies.jam === 0));
+  return cards.filter((card) => {
+    const maxFreq = Math.max(
+      card.frequencies.fold,
+      card.frequencies.call,
+      card.frequencies.raise,
+      card.frequencies.jam
+    );
+    if (focusMixed) return maxFreq !== 1;
+    return !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0);
+  });
 }
 
 function getPrimaryAction(freq: HandFrequencies): Action {
