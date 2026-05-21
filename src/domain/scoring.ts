@@ -5,6 +5,11 @@ export type BalancedAnswer = {
 };
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
+// Max L1 deviation is 200 when two actions are swapped 100/0 vs 0/100.
+const MAX_TOTAL_DEVIATION = 200;
+const EASY_THRESHOLD = 0.95;
+const GOOD_THRESHOLD = 0.75;
+const HARD_THRESHOLD = 0.5;
 
 export function scoreBalancedAnswer(
   answer: BalancedAnswer,
@@ -16,12 +21,12 @@ export function scoreBalancedAnswer(
     return sum + Math.abs(provided - actual);
   }, 0);
 
-  const score = Math.max(0, Math.min(1, 1 - totalDeviation / 200));
-  const grade: AnswerGrade = score >= 0.95
+  const score = Math.max(0, Math.min(1, 1 - totalDeviation / MAX_TOTAL_DEVIATION));
+  const grade: AnswerGrade = score >= EASY_THRESHOLD
     ? 'easy'
-    : score >= 0.75
+    : score >= GOOD_THRESHOLD
       ? 'good'
-      : score >= 0.5
+      : score >= HARD_THRESHOLD
         ? 'hard'
         : 'again';
 

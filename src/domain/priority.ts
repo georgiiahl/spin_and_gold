@@ -5,6 +5,11 @@ import { isBorderHand } from '@/domain/border';
 const RECENT_HAND_PENALTY = 0.05;
 const RECENT_SPOT_PENALTY = 0.4;
 const TOP_N_POOL = 12;
+const PURE_ACTION_SUPPRESSION = 0.3;
+const BOTTOM_MIX_BOOST = 1.4;
+const EVEN_MIX_BOOST = 1.2;
+const BORDER_HAND_BOOST = 1.3;
+const FREQUENCY_EPSILON = 0.0001;
 
 // === Pool distribution ===
 export const RETRY_DELAY_REPEAT_STEPS_SEC = [180, 600] as const;
@@ -60,14 +65,18 @@ export function getNewCardRatio(problemPoolSize: number, totalActive: number): n
 /**
  * Main priority calculation.
  */
+export function getMaxFrequency(frequencies: HandFrequencies): number {
+  return Math.max(frequencies.fold, frequencies.call, frequencies.raise, frequencies.jam);
+}
+
 export function calculateMixedBoost(card: TrainerCard, focusMixed: boolean): number {
   if (!focusMixed) return 1;
 
-  const maxFreq = Math.max(card.frequencies.fold, card.frequencies.call, card.frequencies.raise, card.frequencies.jam);
-  if (maxFreq === 1.0) return 0.3;
-  if (maxFreq === 0.75) return 1.4;
-  if (maxFreq === 0.5) return 1.2;
-  if (maxFreq === 0.25) return 1.4;
+  const maxFreq = getMaxFrequency(card.frequencies);
+  if (Math.abs(maxFreq - 1.0) < FREQUENCY_EPSILON) return PURE_ACTION_SUPPRESSION;
+  if (Math.abs(maxFreq - 0.75) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
+  if (Math.abs(maxFreq - 0.5) < FREQUENCY_EPSILON) return EVEN_MIX_BOOST;
+  if (Math.abs(maxFreq - 0.25) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
   return 1;
 }
 
@@ -81,7 +90,7 @@ export function calculatePriority(card: TrainerCard, focusMixed = false, range?:
   const novelty = calculateNovelty(card);
   const speedFactor = calculateSpeedFactor(card);
   const mixedBoost = calculateMixedBoost(card, focusMixed);
-  const borderBoost = range && isBorderHand(card.hand, range) ? 1.3 : 1;
+  const borderBoost = range && isBorderHand(card.hand, range) ? BORDER_HAND_BOOST : 1;
 
   return urgency * mistakeWeight * mixWeight * trashSuppression * novelty * speedFactor * mixedBoost * borderBoost;
 }

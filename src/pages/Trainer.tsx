@@ -23,6 +23,7 @@ import {
   getRetryDelaySeconds,
   isSpotOnCooldown,
   REVIEW_SAMPLE_EVERY_N,
+  getMaxFrequency,
 } from '@/domain/priority';
 import { BalancedAnswer, scoreBalancedAnswer } from '@/domain/scoring';
 import { loadSettings, AppSettings } from '@/storage/settings';
@@ -61,12 +62,15 @@ const RECENT_SPOTS_LIMIT = 6;
 const MAX_DEPTH_DIFFERENCE_BB = 3;
 const HIGHLIGHT_MS = 1200;
 const RETRY_SAME_SPOT_DEFER_MS = 60_000;
+const MIX_ALLOCATION_STEP = 25;
+const MIX_TOTAL_TARGET = 100;
+const MIX_TOTAL_EPSILON = 0.01;
 
 type FeedbackState = {
   kind: FeedbackKind;
   isCorrect: boolean;
   isMixedCorrect: boolean;
-  selectedAction?: Action;
+  selectedAction: Action;
   correctActions: Action[];
   primaryAction: Action;
   frequencies: HandFrequencies;
@@ -422,7 +426,7 @@ export default function Trainer() {
   function adjustMixAllocation(action: Action, direction: -1 | 1) {
     setMixAllocations((prev) => {
       const current = prev[action] ?? 0;
-      const next = Math.max(0, Math.min(100, current + direction * 25));
+      const next = Math.max(0, Math.min(100, current + direction * MIX_ALLOCATION_STEP));
       return { ...prev, [action]: next };
     });
   }
@@ -503,7 +507,7 @@ export default function Trainer() {
       kind: params.feedbackKind,
       isCorrect: params.isCorrect,
       isMixedCorrect: params.isMixedCorrect,
-      selectedAction: params.feedbackSelectedAction,
+      selectedAction: params.feedbackSelectedAction ?? params.sessionSelectedAction,
       correctActions: params.correctActions,
       primaryAction: params.primaryAction,
       frequencies: currentCard.frequencies,
@@ -596,11 +600,14 @@ export default function Trainer() {
 
     const correctActions = ACTIONS.filter((a) => currentCard.frequencies[a] > 0);
     const total = correctActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
-    if (total !== 100) return;
+    if (Math.abs(total - MIX_TOTAL_TARGET) >= MIX_TOTAL_EPSILON) return;
 
     const balancedAnswer: BalancedAnswer = { allocations: mixAllocations };
     const { score, grade } = scoreBalancedAnswer(balancedAnswer, currentCard.frequencies);
     const primaryAction = getPrimaryAction(currentCard.frequencies);
+    const selectedAction = correctActions.reduce((best, action) => (
+      (balancedAnswer.allocations[action] ?? 0) > (balancedAnswer.allocations[best] ?? 0) ? action : best
+    ), primaryAction);
     const isCorrect = grade !== 'again';
     const feedbackKind: FeedbackKind = isCorrect ? 'correct' : 'wrong';
 
@@ -611,7 +618,8 @@ export default function Trainer() {
       responseTimeMs: Date.now() - startTimeRef.current,
       correctActions,
       primaryAction,
-      sessionSelectedAction: primaryAction,
+      sessionSelectedAction: selectedAction,
+      feedbackSelectedAction: selectedAction,
       feedbackKind,
       balancedAnswer,
       balancedScore: score,
@@ -651,12 +659,13 @@ export default function Trainer() {
     );
   }
 
-  const userAnswerBarPosition = feedback?.selectedAction
+  const userAnswerBarPosition = feedback
     ? getBarPosition(feedback.frequencies, feedback.selectedAction)
     : 0;
   const mixedActions = currentCard ? ACTIONS.filter((a) => currentCard.frequencies[a] > 0) : [];
   const isMixedHand = mixedActions.length >= 2;
   const mixAllocationTotal = mixedActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
+  const isMixTotalValid = Math.abs(mixAllocationTotal - MIX_TOTAL_TARGET) < MIX_TOTAL_EPSILON;
 
   return (
     <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
@@ -696,7 +705,7 @@ export default function Trainer() {
                 ))}
               </div>
             )}
-            {feedback && feedback.selectedAction && barRevealed && (
+            {feedback && barRevealed && (
               <div
                 className="absolute top-0 h-full w-0.5 bg-white shadow transition-all duration-500"
                 style={{ left: `${userAnswerBarPosition}%` }}
@@ -767,12 +776,12 @@ export default function Trainer() {
                     ))}
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className={`text-xs font-medium ${mixAllocationTotal === 100 ? 'text-green-700' : 'text-red-600'}`}>
+                    <span className={`text-xs font-medium ${isMixTotalValid ? 'text-green-700' : 'text-red-600'}`}>
                       Total: {mixAllocationTotal}%
                     </span>
                     <button
                       onClick={handleBalancedAnswer}
-                      disabled={mixAllocationTotal !== 100}
+                      disabled={!isMixTotalValid}
                       className="rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
                     >
                       Confirm
@@ -793,7 +802,7 @@ export default function Trainer() {
                 }`}>
                   {feedback.isCorrect ? '✓' : feedback.kind === 'depth_confusion' ? '⚠' : '✗'}
                 </span>
-                {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && feedback.selectedAction && (
+                {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
                   <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
                     {ACTION_LABELS[feedback.selectedAction]} → {feedback.confusedWithSpot.effectiveStackBb}bb
                   </span>
@@ -855,12 +864,7 @@ function getBarPosition(freq: HandFrequencies, action: Action): number {
 function filterTrainableCards(cards: TrainerCard[], includeTrash: boolean, focusMixed: boolean): TrainerCard[] {
   if (includeTrash) return cards;
   return cards.filter((card) => {
-    const maxFreq = Math.max(
-      card.frequencies.fold,
-      card.frequencies.call,
-      card.frequencies.raise,
-      card.frequencies.jam
-    );
+    const maxFreq = getMaxFrequency(card.frequencies);
     if (focusMixed) return maxFreq !== 1;
     return !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0);
   });
