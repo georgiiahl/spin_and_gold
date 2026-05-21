@@ -73,6 +73,7 @@ export function calculateMixedBoost(card: TrainerCard, focusMixed: boolean): num
   if (!focusMixed) return 1;
 
   const maxFreq = getMaxFrequency(card.frequencies);
+  // Pure actions are handled by getFocusMixedPriorityMultiplier in calculateTrashSuppression.
   if (Math.abs(maxFreq - 1.0) < FREQUENCY_EPSILON) return 1;
   if (Math.abs(maxFreq - 0.75) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
   if (Math.abs(maxFreq - 0.5) < FREQUENCY_EPSILON) return EVEN_MIX_BOOST;

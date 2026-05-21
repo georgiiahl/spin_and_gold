@@ -45,11 +45,7 @@ export function isTrainableCard(card: TrainerCard, settings: TrainableSettings):
   }
 
   if (!pureAction) return true;
-  if (pureAction === 'call') return false;
-  if (pureAction === 'raise' || pureAction === 'jam') return true;
-  if (pureAction === 'fold') return true;
-
-  return true;
+  return pureAction !== 'call';
 }
 
 export function getFocusMixedPriorityMultiplier(card: TrainerCard, range?: SpotRange): number {
