@@ -41,7 +41,7 @@ export default function PokerTable({ format, actingPosition, history, effectiveS
   }
 
   return (
-    <div className="relative mx-auto h-[28vh] min-h-40 max-h-56 w-full max-w-sm">
+    <div className="relative mx-auto h-[28vh] min-h-40 max-h-56 w-full max-w-sm" role="img" aria-label="Poker table">
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="h-[72%] w-[84%] rounded-full border border-emerald-100 bg-emerald-50/40" />
       </div>

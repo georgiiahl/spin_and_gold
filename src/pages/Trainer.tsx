@@ -585,7 +585,7 @@ export default function Trainer() {
             className={`flex h-20 w-14 flex-col items-center justify-center rounded-lg text-lg font-bold text-white shadow-sm ${card.backgroundClass}`}
           >
             <span className="leading-none">{card.rank}</span>
-            <span className="leading-none text-base">{card.suit}</span>
+            <span className="leading-none text-sm">{card.suit}</span>
           </div>
         ))}
       </div>
@@ -633,6 +633,10 @@ export default function Trainer() {
             )}
 
             <div className="mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors duration-300">
+              <div className="mb-1">
+                <span className="text-gray-500">You chose: </span>
+                <span className={`font-semibold ${ACTION_TEXT_CLASSES[feedback.selectedAction]}`}>{ACTION_LABELS[feedback.selectedAction]}</span>
+              </div>
               <div className="mb-1">
                 <span className="text-gray-500">Primary: </span>
                 <span className={`font-semibold ${ACTION_TEXT_CLASSES[feedback.primaryAction]}`}>{ACTION_LABELS[feedback.primaryAction]}</span>
@@ -763,10 +767,7 @@ function buildCards(hand?: string): RenderCard[] | null {
   if (rankA === rankB) {
     secondSuitIndex = (firstSuitIndex + 1) % SUITS.length;
   } else if (suffix !== 'S') {
-    secondSuitIndex = (firstSuitIndex + 1 + (seed % (SUITS.length - 1))) % SUITS.length;
-    if (secondSuitIndex === firstSuitIndex) {
-      secondSuitIndex = (secondSuitIndex + 1) % SUITS.length;
-    }
+    secondSuitIndex = getOffSuitSecondIndex(firstSuitIndex, seed);
   }
 
   const firstSuit = SUITS[firstSuitIndex];
@@ -776,4 +777,12 @@ function buildCards(hand?: string): RenderCard[] | null {
     { rank: rankA, suit: firstSuit.symbol, backgroundClass: firstSuit.backgroundClass },
     { rank: rankB, suit: secondSuit.symbol, backgroundClass: secondSuit.backgroundClass },
   ];
+}
+
+function getOffSuitSecondIndex(firstSuitIndex: number, seed: number): number {
+  let secondSuitIndex = (firstSuitIndex + 1 + (seed % (SUITS.length - 1))) % SUITS.length;
+  if (secondSuitIndex === firstSuitIndex) {
+    secondSuitIndex = (secondSuitIndex + 1) % SUITS.length;
+  }
+  return secondSuitIndex;
 }
