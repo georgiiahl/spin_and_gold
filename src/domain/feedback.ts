@@ -1,119 +1,159 @@
-import { AppSettings } from '@/storage/settings';
+export type FeedbackKind =
+  | 'correct'
+  | 'slow_correct'
+  | 'depth_confusion'
+  | 'wrong'
+  | 'mix_acceptable';
 
-export type FeedbackKind = 'correct' | 'slow_correct' | 'depth_confusion' | 'wrong' | 'mix_acceptable';
-type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
-
-type FeedbackConfig = {
-  vibrate: number[];
-  oscillator?: OscillatorType;
-  frequencyHz?: number;
-  durationMs?: number;
-  gain?: number;
-  panelClassName: string;
+type FeedbackOptions = {
+  feedbackSounds: boolean;
+  feedbackVibration: boolean;
 };
 
-const FEEDBACK_CONFIG: Record<FeedbackKind, FeedbackConfig> = {
+type NoteSequence = {
+  notes: Array<{ freq: number; startMs: number; durationMs: number }>;
+  type: OscillatorType;
+  gain: number;
+};
+
+const SOUND_CONFIG: Record<FeedbackKind, NoteSequence | null> = {
   correct: {
-    vibrate: [25],
-    oscillator: 'sine',
-    frequencyHz: 440,
-    durationMs: 80,
-    gain: 0.18,
-    panelClassName: 'bg-emerald-500/20 border-emerald-300',
+    notes: [
+      { freq: 523.25, startMs: 0, durationMs: 80 },
+      { freq: 659.25, startMs: 60, durationMs: 80 },
+      { freq: 783.99, startMs: 120, durationMs: 160 },
+    ],
+    type: 'sine',
+    gain: 0.12,
   },
   slow_correct: {
-    vibrate: [25],
-    oscillator: 'sine',
-    frequencyHz: 440,
-    durationMs: 80,
-    gain: 0.045,
-    panelClassName: 'bg-emerald-500/10 border-emerald-200',
+    notes: [
+      { freq: 523.25, startMs: 0, durationMs: 100 },
+      { freq: 659.25, startMs: 80, durationMs: 120 },
+    ],
+    type: 'sine',
+    gain: 0.08,
   },
   depth_confusion: {
-    vibrate: [25, 80, 25],
-    oscillator: 'triangle',
-    frequencyHz: 220,
-    durationMs: 120,
-    gain: 0.2,
-    panelClassName: 'bg-amber-500/20 border-amber-300',
+    notes: [
+      { freq: 440, startMs: 0, durationMs: 120 },
+      { freq: 370, startMs: 100, durationMs: 120 },
+      { freq: 440, startMs: 220, durationMs: 150 },
+    ],
+    type: 'triangle',
+    gain: 0.10,
   },
   wrong: {
-    vibrate: [120],
-    oscillator: 'sawtooth',
-    frequencyHz: 150,
-    durationMs: 150,
-    gain: 0.2,
-    panelClassName: 'bg-red-500/20 border-red-300',
+    notes: [
+      { freq: 311, startMs: 0, durationMs: 150 },
+      { freq: 277, startMs: 130, durationMs: 200 },
+    ],
+    type: 'sine',
+    gain: 0.10,
   },
-  mix_acceptable: {
-    vibrate: [],
-    panelClassName: 'bg-violet-500/10 border-violet-200',
-  },
+  mix_acceptable: null,
 };
 
-const FLASH_DURATION_MS = 250;
+const VIBRATE_CONFIG: Record<FeedbackKind, number[] | null> = {
+  correct: [25],
+  slow_correct: [25],
+  depth_confusion: [30, 80, 30],
+  wrong: [150],
+  mix_acceptable: null,
+};
 
-let audioContext: AudioContext | null = null;
+let audioCtx: AudioContext | null = null;
+let audioUnlocked = false;
 
-function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  const webkitWindow = window as WebkitWindow;
-  if (!window.AudioContext && !webkitWindow.webkitAudioContext) {
-    return null;
+function getAudioContext(): AudioContext {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
-  if (!audioContext) {
-    const Ctx = window.AudioContext ?? webkitWindow.webkitAudioContext;
-    audioContext = Ctx ? new Ctx() : null;
-  }
-  return audioContext;
+  return audioCtx;
 }
 
-function playTone(kind: FeedbackKind): void {
-  const config = FEEDBACK_CONFIG[kind];
-  if (!config.oscillator || !config.frequencyHz || !config.durationMs || !config.gain) return;
+/**
+ * Must be called DIRECTLY inside a user gesture (click/touchend handler).
+ * Unlocks AudioContext on iOS and plays the sound immediately.
+ */
+export function triggerFeedback(kind: FeedbackKind, options: FeedbackOptions) {
+  // Unlock audio on first interaction (iOS requirement)
+  if (options.feedbackSounds) {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    if (!audioUnlocked) {
+      // Play a silent buffer to unlock iOS audio
+      const silentBuffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      audioUnlocked = true;
+    }
+    playChord(kind, ctx);
+  }
 
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const now = ctx.currentTime;
-  const durationSec = config.durationMs / 1000;
-
-  osc.type = config.oscillator;
-  osc.frequency.setValueAtTime(config.frequencyHz, now);
-
-  gain.gain.setValueAtTime(config.gain, now);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
-
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(now);
-  osc.stop(now + durationSec);
+  if (options.feedbackVibration) {
+    vibrate(kind);
+  }
 }
 
-function triggerVibration(kind: FeedbackKind): void {
-  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
-  const pattern = FEEDBACK_CONFIG[kind].vibrate;
-  if (pattern.length > 0) {
-    navigator.vibrate(pattern);
+function playChord(kind: FeedbackKind, ctx: AudioContext) {
+  const config = SOUND_CONFIG[kind];
+  if (!config) return;
+
+  try {
+    for (const note of config.notes) {
+      const startTime = ctx.currentTime + note.startMs / 1000;
+      const duration = note.durationMs / 1000;
+
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = config.type;
+      osc.frequency.setValueAtTime(note.freq, startTime);
+
+      // Bell-like envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(config.gain, startTime + 0.015);
+      gainNode.gain.setValueAtTime(config.gain, startTime + duration * 0.3);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.01);
+    }
+  } catch {
+    // Audio not available
+  }
+}
+
+function vibrate(kind: FeedbackKind) {
+  const pattern = VIBRATE_CONFIG[kind];
+  if (!pattern) return;
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // Vibration not available
   }
 }
 
 export function getFeedbackPanelClass(kind: FeedbackKind): string {
-  return FEEDBACK_CONFIG[kind].panelClassName;
-}
-
-export function triggerFeedback(kind: FeedbackKind, settings: Pick<AppSettings, 'feedbackSounds' | 'feedbackVibration'>): void {
-  if (typeof document !== 'undefined') {
-    const className = `feedback-flash-${kind}`;
-    document.body.classList.add(className);
-    window.setTimeout(() => document.body.classList.remove(className), FLASH_DURATION_MS);
-  }
-  if (settings.feedbackVibration) {
-    triggerVibration(kind);
-  }
-  if (settings.feedbackSounds) {
-    playTone(kind);
+  switch (kind) {
+    case 'correct':
+    case 'slow_correct':
+      return 'border-green-200 bg-green-50/50';
+    case 'depth_confusion':
+      return 'border-amber-200 bg-amber-50/50';
+    case 'wrong':
+      return 'border-red-200 bg-red-50/50';
+    case 'mix_acceptable':
+      return 'border-violet-200 bg-violet-50/50';
+    default:
+      return 'border-gray-200';
   }
 }

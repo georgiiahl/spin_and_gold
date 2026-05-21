@@ -40,3 +40,13 @@ body.feedback-flash-mix_acceptable {
 .animate-pulse-amber {
   animation: pulse-amber 900ms ease-in-out 2;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+
+  .animate-pulse-amber {
+    animation: none;
+  }
+}

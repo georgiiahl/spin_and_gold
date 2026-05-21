@@ -1,23 +1,63 @@
 import { TrainerCard, HandFrequencies } from '@/domain/types';
 
-const RECENT_HAND_PENALTY = 0.1;
-const RECENT_SPOT_PENALTY = 0.5;
+// === Tuned weights for infinite flow ===
+const RECENT_HAND_PENALTY = 0.05;
+const RECENT_SPOT_PENALTY = 0.4;
+const TOP_N_POOL = 12;
+
+// === Pool distribution ===
+export const RETRY_DELAY_CARDS = 4;
+export const REVIEW_SAMPLE_EVERY_N = 8;
+export const ERROR_RATE_PROBLEM_THRESHOLD = 0.4;
+export const ERROR_RATE_WINDOW = 10; // last N shown
+
+export const POOL_WEIGHTS = {
+  problem: 0.55,
+  learning: 0.35,
+  review: 0.10,
+};
 
 /**
- * Smart Priority Engine
- * 
- * Calculates a priority score for each card to determine training order.
- * Higher score = shown sooner.
- * 
- * Factors:
- * 1. Memory urgency — overdue cards get high priority
- * 2. Mistake weight — frequently missed cards are prioritized
- * 3. Mix weight — mixed strategy hands are harder, boost priority
- * 4. Trash suppression — pure fold hands with good streak get deprioritized
- * 5. Novelty — new cards get a boost
- * 6. Speed factor — slow correct answers suggest shaky knowledge
+ * Classify a card into a pool for infinite training flow.
  */
+export type CardPool = 'problem' | 'learning' | 'review' | 'new';
 
+export function classifyCardPool(card: TrainerCard): CardPool {
+  const { phase } = card.memory;
+  const { shown, wrong, streak } = card.stats;
+
+  // Problem: relearning, or high error rate in recent window
+  if (phase === 'relearning') return 'problem';
+  if (shown >= 3) {
+    const recentErrorRate = wrong / shown;
+    if (recentErrorRate > ERROR_RATE_PROBLEM_THRESHOLD && streak < 3) return 'problem';
+  }
+
+  // New: never seen
+  if (phase === 'new') return 'new';
+
+  // Learning
+  if (phase === 'learning') return 'learning';
+
+  // Review / Mastered
+  return 'review';
+}
+
+/**
+ * Get the adaptive new card ratio based on problem pool pressure.
+ */
+export function getNewCardRatio(problemPoolSize: number, totalActive: number): number {
+  if (totalActive === 0) return 0.30;
+  const problemRatio = problemPoolSize / totalActive;
+
+  if (problemRatio > 0.3) return 0.10;
+  if (problemRatio > 0.2) return 0.20;
+  return 0.30;
+}
+
+/**
+ * Main priority calculation.
+ */
 export function calculatePriority(card: TrainerCard): number {
   const now = Date.now();
 
@@ -34,19 +74,15 @@ export function calculatePriority(card: TrainerCard): number {
 function calculateUrgency(card: TrainerCard, now: number): number {
   const { phase, dueAt } = card.memory;
 
-  if (phase === 'new') return 3; // New cards have moderate priority
+  if (phase === 'new') return 2;
 
   if (!dueAt) return 1;
 
   const overdueMs = now - dueAt;
-  if (overdueMs <= 0) {
-    // Not yet due — low priority
-    return 0.1;
-  }
+  if (overdueMs <= 0) return 0.1;
 
-  // Overdue: scale from 1 to 10 based on how overdue
   const overdueDays = overdueMs / 86_400_000;
-  return Math.min(10, 1 + overdueDays * 2);
+  return Math.min(15, 1 + overdueDays * 3);
 }
 
 function calculateMistakeWeight(card: TrainerCard): number {
@@ -54,8 +90,6 @@ function calculateMistakeWeight(card: TrainerCard): number {
   if (shown === 0) return 1;
 
   const errorRate = wrong / shown;
-  // High error rate = much higher priority
-  // Good streak reduces priority slightly
   const streakDiscount = Math.max(0.5, 1 - streak * 0.05);
   return (1 + errorRate * 3) * streakDiscount;
 }
@@ -63,34 +97,28 @@ function calculateMistakeWeight(card: TrainerCard): number {
 function calculateMixWeight(frequencies: HandFrequencies): number {
   const nonZero = Object.values(frequencies).filter((v) => v > 0).length;
   if (nonZero <= 1) return 1;
-  // Mixed hands get 1.5-2x boost
-  return 1 + nonZero * 0.3;
+  return 1 + nonZero * 0.4;
 }
 
 function calculateTrashSuppression(card: TrainerCard): number {
   const { frequencies } = card;
   const { streak, shown } = card.stats;
 
-  // Is this a pure fold hand?
   if (frequencies.fold === 1 && frequencies.call === 0 && frequencies.raise === 0 && frequencies.jam === 0) {
-    // After being shown a few times with good streak, heavily suppress
-    if (shown >= 3 && streak >= 3) return 0.05;
-    if (shown >= 2 && streak >= 2) return 0.2;
-    if (shown >= 1 && streak >= 1) return 0.5;
+    if (shown >= 3 && streak >= 3) return 0.01;
+    if (shown >= 2 && streak >= 2) return 0.15;
+    if (shown >= 1 && streak >= 1) return 0.4;
   }
 
-  // Pure obvious actions (e.g., AA = always jam) — slight suppression after mastery
   const maxFreq = Math.max(frequencies.fold, frequencies.call, frequencies.raise, frequencies.jam);
-  if (maxFreq === 1 && streak >= 5 && shown >= 5) {
-    return 0.3;
-  }
+  if (maxFreq === 1 && streak >= 5 && shown >= 5) return 0.2;
 
   return 1;
 }
 
 function calculateNovelty(card: TrainerCard): number {
-  if (card.memory.phase === 'new') return 1.3;
-  if (card.memory.phase === 'learning') return 1.2;
+  if (card.memory.phase === 'new') return 1.1;
+  if (card.memory.phase === 'learning') return 1.3;
   return 1;
 }
 
@@ -98,15 +126,13 @@ function calculateSpeedFactor(card: TrainerCard): number {
   const { avgResponseMs, shown } = card.stats;
   if (shown === 0 || avgResponseMs === 0) return 1;
 
-  // Slow answers (>5s average) suggest shaky knowledge
-  if (avgResponseMs > 5000) return 1.3;
-  if (avgResponseMs > 3000) return 1.1;
+  if (avgResponseMs > 5000) return 1.5;
+  if (avgResponseMs > 3000) return 1.3;
   return 1;
 }
 
 /**
- * Pick next card from a list sorted by priority (descending).
- * Adds slight randomization to avoid always showing the same card.
+ * Pick next card with anti-repeat and weighted randomization.
  */
 export function pickNextCard(
   cards: TrainerCard[],
@@ -118,23 +144,16 @@ export function pickNextCard(
   const recentHandsSet = new Set(recentHands);
   const recentSpotIdsSet = new Set(recentSpotIds);
 
-  // Score all cards
   const scored = cards.map((card) => {
     let score = calculatePriority(card);
-    if (recentHandsSet.has(card.hand)) {
-      score *= RECENT_HAND_PENALTY;
-    }
-    if (recentSpotIdsSet.has(card.spotId)) {
-      score *= RECENT_SPOT_PENALTY;
-    }
+    if (recentHandsSet.has(card.hand)) score *= RECENT_HAND_PENALTY;
+    if (recentSpotIdsSet.has(card.spotId)) score *= RECENT_SPOT_PENALTY;
     return { card, score };
   });
 
-  // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick from the top candidates with weighted random to add variety
-  const topN = scored.slice(0, Math.min(10, scored.length));
+  const topN = scored.slice(0, Math.min(TOP_N_POOL, scored.length));
   const totalScore = topN.reduce((sum, s) => sum + s.score, 0);
 
   if (totalScore === 0) return topN[0].card;

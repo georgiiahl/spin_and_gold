@@ -9,27 +9,21 @@ export type AppSettings = {
   mixThreshold: number;
   feedbackSounds: boolean;
   feedbackVibration: boolean;
-  sessionMode: 'until_done' | 'timed' | 'cards';
-  sessionTimeLimitMin: number;
-  sessionCardLimit: number;
 };
 
 const SETTINGS_KEY = 'spin-gold-settings-v1';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   flashDurationSec: 2,
-  fastResponseMs: 2000,
-  slowResponseMs: 8000,
+  fastResponseMs: 1200,
+  slowResponseMs: 3500,
   showFrequenciesInFeedback: true,
   includeTrashHandsInTraining: false,
   focusOnMixedHands: false,
   mixStrategy: 'strict',
-  mixThreshold: 0.65,
+  mixThreshold: 0.60,
   feedbackSounds: true,
   feedbackVibration: true,
-  sessionMode: 'until_done',
-  sessionTimeLimitMin: 20,
-  sessionCardLimit: 100,
 };
 
 export function loadSettings(): AppSettings {
