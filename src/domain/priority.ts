@@ -1,9 +1,15 @@
-import { TrainerCard, HandFrequencies } from '@/domain/types';
+import { TrainerCard, HandFrequencies, SpotRange } from '@/domain/types';
+import { isBorderHand } from '@/domain/border';
 
 // === Tuned weights for infinite flow ===
 const RECENT_HAND_PENALTY = 0.05;
 const RECENT_SPOT_PENALTY = 0.4;
 const TOP_N_POOL = 12;
+const PURE_ACTION_SUPPRESSION = 0.3;
+const BOTTOM_MIX_BOOST = 1.4;
+const EVEN_MIX_BOOST = 1.2;
+const BORDER_HAND_BOOST = 1.3;
+const FREQUENCY_EPSILON = 0.0001;
 
 // === Pool distribution ===
 export const RETRY_DELAY_REPEAT_STEPS_SEC = [180, 600] as const;
@@ -59,7 +65,22 @@ export function getNewCardRatio(problemPoolSize: number, totalActive: number): n
 /**
  * Main priority calculation.
  */
-export function calculatePriority(card: TrainerCard): number {
+export function getMaxFrequency(frequencies: HandFrequencies): number {
+  return Math.max(frequencies.fold, frequencies.call, frequencies.raise, frequencies.jam);
+}
+
+export function calculateMixedBoost(card: TrainerCard, focusMixed: boolean): number {
+  if (!focusMixed) return 1;
+
+  const maxFreq = getMaxFrequency(card.frequencies);
+  if (Math.abs(maxFreq - 1.0) < FREQUENCY_EPSILON) return PURE_ACTION_SUPPRESSION;
+  if (Math.abs(maxFreq - 0.75) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
+  if (Math.abs(maxFreq - 0.5) < FREQUENCY_EPSILON) return EVEN_MIX_BOOST;
+  if (Math.abs(maxFreq - 0.25) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
+  return 1;
+}
+
+export function calculatePriority(card: TrainerCard, focusMixed = false, range?: SpotRange): number {
   const now = Date.now();
 
   const urgency = calculateUrgency(card, now);
@@ -68,8 +89,10 @@ export function calculatePriority(card: TrainerCard): number {
   const trashSuppression = calculateTrashSuppression(card);
   const novelty = calculateNovelty(card);
   const speedFactor = calculateSpeedFactor(card);
+  const mixedBoost = calculateMixedBoost(card, focusMixed);
+  const borderBoost = range && isBorderHand(card.hand, range) ? BORDER_HAND_BOOST : 1;
 
-  return urgency * mistakeWeight * mixWeight * trashSuppression * novelty * speedFactor;
+  return urgency * mistakeWeight * mixWeight * trashSuppression * novelty * speedFactor * mixedBoost * borderBoost;
 }
 
 function calculateUrgency(card: TrainerCard, now: number): number {
@@ -138,7 +161,9 @@ function calculateSpeedFactor(card: TrainerCard): number {
 export function pickNextCard(
   cards: TrainerCard[],
   recentHands: string[] = [],
-  recentSpotIds: string[] = []
+  recentSpotIds: string[] = [],
+  focusMixed = false,
+  rangesBySpot?: Map<string, SpotRange>
 ): TrainerCard | null {
   if (cards.length === 0) return null;
 
@@ -146,7 +171,7 @@ export function pickNextCard(
   const recentSpotIdsSet = new Set(recentSpotIds);
 
   const scored = cards.map((card) => {
-    let score = calculatePriority(card);
+    let score = calculatePriority(card, focusMixed, rangesBySpot?.get(card.spotId));
     if (recentHandsSet.has(card.hand)) score *= RECENT_HAND_PENALTY;
     if (recentSpotIdsSet.has(card.spotId)) score *= RECENT_SPOT_PENALTY;
     return { card, score };

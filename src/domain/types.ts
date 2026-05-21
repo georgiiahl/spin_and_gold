@@ -106,6 +106,8 @@ export type SessionAnswer = {
   isMixedCorrect: boolean;
   responseTimeMs: number;
   grade: AnswerGrade;
+  balancedAnswer?: { allocations: Partial<Record<Action, number>> };
+  balancedScore?: number;
   timestamp: number;
   errorType?: 'wrong_action' | 'mix_miss' | 'depth_confusion' | 'position_confusion';
 };

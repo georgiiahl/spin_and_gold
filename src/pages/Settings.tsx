@@ -170,6 +170,17 @@ export default function Settings() {
               onChange={(e) => update('focusOnMixedHands', e.target.checked)}
             />
           </label>
+          <p className="text-xs text-gray-500">
+            Prioritizes 75/25, 50/50, and 25/75 hands, suppresses pure actions. Border hands always get priority boost.
+          </p>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Show Mix button for mixed hands</span>
+            <input
+              type="checkbox"
+              checked={settings.showMixButton}
+              onChange={(e) => update('showMixButton', e.target.checked)}
+            />
+          </label>
           <label className="flex items-center justify-between gap-3 text-sm">
             <span className="text-gray-700">Feedback sounds</span>
             <input
