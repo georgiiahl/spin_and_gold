@@ -7,6 +7,7 @@ import { getDB } from '@/storage/db';
 import { getAllRanges, getRange } from '@/storage/ranges';
 import { getAllSessions } from '@/storage/sessions';
 import { getAllSpots, getSpot } from '@/storage/spots';
+import { seedBundledCharts } from '@/storage/seedBundledCharts';
 
 type FullExportPayload = {
   version: 1;
@@ -35,6 +36,8 @@ export default function ImportExport() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [spotId, setSpotId] = useState('');
   const [status, setStatus] = useState<string>('');
+  const [bundledStatus, setBundledStatus] = useState<string>('');
+  const [bundledImporting, setBundledImporting] = useState(false);
 
   useEffect(() => {
     getAllSpots().then((loadedSpots) => {
@@ -116,6 +119,26 @@ export default function ImportExport() {
     }
   }
 
+  async function handleImportBundled() {
+    setBundledImporting(true);
+    setBundledStatus('');
+    try {
+      const result = await seedBundledCharts(true);
+      if (result.importedFiles.length === 0) {
+        setBundledStatus('No chart files in manifest.');
+      } else {
+        setBundledStatus(`Imported ${result.importedSpots} spot(s) from ${result.importedFiles.length} file(s).`);
+        const refreshed = await getAllSpots();
+        setSpots(refreshed.sort((a, b) => a.title.localeCompare(b.title)));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed.';
+      setBundledStatus(`Error: ${message}`);
+    } finally {
+      setBundledImporting(false);
+    }
+  }
+
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Import / Export</h1>
@@ -153,6 +176,21 @@ export default function ImportExport() {
               Export spot
             </button>
           </div>
+        </section>
+
+        <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <h2 className="font-semibold">Bundled charts</h2>
+          <p className="text-sm text-gray-500">
+            Import chart files bundled with the app (from public/charts/).
+          </p>
+          <button
+            onClick={handleImportBundled}
+            disabled={bundledImporting}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+          >
+            {bundledImporting ? 'Importing…' : 'Import bundled charts'}
+          </button>
+          {bundledStatus && <p className="text-sm text-gray-700">{bundledStatus}</p>}
         </section>
 
         <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">

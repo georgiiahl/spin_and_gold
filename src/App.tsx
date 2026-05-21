@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
 import SpotList from '@/pages/SpotList';
@@ -12,8 +13,27 @@ import GlobalStats from '@/pages/GlobalStats';
 import StudyMode from '@/pages/StudyMode';
 import ImportExport from '@/pages/ImportExport';
 import Settings from '@/pages/Settings';
+import { getAllSpots } from '@/storage/spots';
+import { seedBundledCharts } from '@/storage/seedBundledCharts';
 
 export default function App() {
+  useEffect(() => {
+    let mounted = true;
+    getAllSpots().then((spots) => {
+      if (!mounted || spots.length > 0) return;
+      seedBundledCharts().then((result) => {
+        if (!mounted) return;
+        if (result.importedSpots > 0) {
+          console.log(`[seedBundledCharts] Auto-imported ${result.importedSpots} spot(s) from ${result.importedFiles.length} file(s).`);
+        }
+      }).catch((err) => {
+        if (!mounted) return;
+        console.warn('[seedBundledCharts] Auto-seed failed:', err);
+      });
+    });
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col">
       <Routes>
