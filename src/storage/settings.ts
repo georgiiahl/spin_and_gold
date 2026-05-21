@@ -7,6 +7,9 @@ export type AppSettings = {
   focusOnMixedHands: boolean;
   mixStrategy: 'strict' | 'tolerant';
   mixThreshold: number;
+  desiredRetention: number;
+  retryMinDelaySec: number;
+  sameSpotCooldown: number;
   feedbackSounds: boolean;
   feedbackVibration: boolean;
 };
@@ -22,6 +25,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   focusOnMixedHands: false,
   mixStrategy: 'strict',
   mixThreshold: 0.60,
+  desiredRetention: 0.9,
+  retryMinDelaySec: 60,
+  sameSpotCooldown: 5,
   feedbackSounds: true,
   feedbackVibration: true,
 };

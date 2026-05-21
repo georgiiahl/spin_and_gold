@@ -13,19 +13,21 @@ import {
 import { ALL_HANDS } from '@/domain/hands';
 import { getSpot, getSpotsByCategory } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
-import { saveSession } from '@/storage/sessions';
+import { getAllSessions, saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
-import { createNewCard, determineGrade, scheduleCard } from '@/domain/memory';
+import { createNewCard, determineGrade, migrateCardMemory, scheduleCard } from '@/domain/memory';
 import {
   pickNextCard,
   classifyCardPool,
   getNewCardRatio,
-  RETRY_DELAY_CARDS,
+  getRetryDelaySeconds,
+  isSpotOnCooldown,
   REVIEW_SAMPLE_EVERY_N,
 } from '@/domain/priority';
 import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
 import { FeedbackKind, triggerFeedback } from '@/domain/feedback';
+import { estimateInitialDifficulty, recalibrateCardDifficulty } from '@/domain/difficulty';
 
 const ACTION_LABELS: Record<Action, string> = {
   fold: 'Fold',
@@ -54,7 +56,7 @@ const ACTION_BAR_COLORS: Record<Action, string> = {
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const RECENT_HANDS_LIMIT = 10;
-const RECENT_SPOTS_LIMIT = 3;
+const RECENT_SPOTS_LIMIT = 6;
 const MAX_DEPTH_DIFFERENCE_BB = 3;
 const HIGHLIGHT_MS = 1200;
 
@@ -88,8 +90,10 @@ export default function Trainer() {
   const [highlightStack, setHighlightStack] = useState(false);
   const [highlightPosition, setHighlightPosition] = useState(false);
 
-  // Retry queue: cards that were answered wrong, come back after N cards
-  const retryQueueRef = useRef<Array<{ card: TrainerCard; showAfterCount: number }>>([]);
+  // Retry queue: cards that were answered wrong, come back after a time delay
+  const retryQueueRef = useRef<Array<{ card: TrainerCard; retryAfterTimestamp: number }>>([]);
+  const retryAttemptsRef = useRef<Map<string, number>>(new Map());
+  const sessionHistoryRef = useRef<SessionAnswer[]>([]);
   const cardCountRef = useRef(0);
 
   const startTimeRef = useRef<number>(0);
@@ -151,9 +155,11 @@ export default function Trainer() {
     setSessionCount(0);
     setCorrectCount(0);
     retryQueueRef.current = [];
+    retryAttemptsRef.current = new Map();
     cardCountRef.current = 0;
     recentHandsRef.current = [];
     lastShownSpotIdsRef.current = [];
+    sessionHistoryRef.current = await getAllSessions();
 
     const selectedSpots = id
       ? [await getSpot(id)].filter((spot): spot is Spot => Boolean(spot))
@@ -171,8 +177,9 @@ export default function Trainer() {
     setSpots(selectedSpots);
 
     const allCards: TrainerCard[] = [];
-    const newCards: TrainerCard[] = [];
+    const cardsToPersist: TrainerCard[] = [];
     const rangeMap = new Map<string, SpotRange>();
+    const existingCardsBySpot = new Map<string, TrainerCard[]>();
 
     for (const selectedSpot of selectedSpots) {
       const [range, existingCards] = await Promise.all([
@@ -182,25 +189,51 @@ export default function Trainer() {
 
       if (!range) continue;
       rangeMap.set(selectedSpot.id, range);
+      existingCardsBySpot.set(selectedSpot.id, existingCards);
+    }
 
-      const cardMap = new Map(existingCards.map((c) => [c.hand, c]));
+    for (const selectedSpot of selectedSpots) {
+      const range = rangeMap.get(selectedSpot.id);
+      if (!range) continue;
+
+      const siblings = selectedSpots.filter(
+        (s) => s.id !== selectedSpot.id && normalizeSpotCategory(s.category) === normalizeSpotCategory(selectedSpot.category)
+      );
+      const cardMap = new Map((existingCardsBySpot.get(selectedSpot.id) ?? []).map((c) => [c.hand, c]));
+
       for (const hand of ALL_HANDS) {
         const freq = range[hand];
         if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
 
+        const structuralDifficulty = estimateInitialDifficulty(hand, freq, selectedSpot, siblings, rangeMap);
         const existing = cardMap.get(hand);
         if (existing) {
           existing.frequencies = freq;
-          allCards.push(existing);
+          const migrated = migrateCardMemory(existing);
+          migrated.memory.structuralDifficulty = structuralDifficulty;
+          migrated.memory.difficulty = recalibrateCardDifficulty(
+            migrated,
+            sessionHistoryRef.current,
+            structuralDifficulty
+          );
+          allCards.push(migrated);
+          if (JSON.stringify(existing.memory) !== JSON.stringify(migrated.memory)) {
+            cardsToPersist.push(migrated);
+          }
         } else {
-          const card = createNewCard(selectedSpot.id, hand, freq);
+          const difficulty = recalibrateCardDifficulty(
+            createNewCard(selectedSpot.id, hand, freq, structuralDifficulty),
+            sessionHistoryRef.current,
+            structuralDifficulty
+          );
+          const card = createNewCard(selectedSpot.id, hand, freq, difficulty);
           allCards.push(card);
-          newCards.push(card);
+          cardsToPersist.push(card);
         }
       }
     }
 
-    if (newCards.length > 0) await saveCards(newCards);
+    if (cardsToPersist.length > 0) await saveCards(cardsToPersist);
 
     setRangesBySpot(rangeMap);
     setCards(allCards);
@@ -225,18 +258,52 @@ export default function Trainer() {
     lastShownSpotIdsRef.current = [...lastShownSpotIdsRef.current, card.spotId].slice(-RECENT_SPOTS_LIMIT);
   }
 
+  function pickRespectingCooldown(pool: TrainerCard[]): TrainerCard | null {
+    if (pool.length === 0) return null;
+    const candidates = [...pool];
+
+    while (candidates.length > 0) {
+      const picked = pickNextCard(candidates, recentHandsRef.current, lastShownSpotIdsRef.current);
+      if (!picked) return null;
+
+      if (!isSpotOnCooldown(picked.spotId, lastShownSpotIdsRef.current, settings.sameSpotCooldown)) {
+        return picked;
+      }
+
+      const pickedIndex = candidates.findIndex((c) => c.id === picked.id);
+      if (pickedIndex < 0) return null;
+      candidates.splice(pickedIndex, 1);
+    }
+
+    return null;
+  }
+
   /**
    * Pick next card from pools with retry queue priority.
    */
   function pickFromPools(allCards: TrainerCard[], count: number): TrainerCard | null {
-    // 1. Check retry queue first
-    const retryReady = retryQueueRef.current.filter((r) => count >= r.showAfterCount);
-    if (retryReady.length > 0) {
-      const retry = retryReady[0];
-      retryQueueRef.current = retryQueueRef.current.filter((r) => r !== retry);
-      // Get fresh version from cards array
-      const fresh = allCards.find((c) => c.id === retry.card.id);
-      return fresh ?? retry.card;
+    // 1. Check retry queue first (time-based)
+    const now = Date.now();
+    const readyRetries = retryQueueRef.current
+      .filter((r) => now >= r.retryAfterTimestamp)
+      .sort((a, b) => a.retryAfterTimestamp - b.retryAfterTimestamp);
+
+    if (readyRetries.length > 0) {
+      const seenSpots = new Set<string>();
+      for (const retry of readyRetries) {
+        if (seenSpots.has(retry.card.spotId)) {
+          retry.retryAfterTimestamp = now + 60_000;
+          continue;
+        }
+        seenSpots.add(retry.card.spotId);
+      }
+
+      const retry = readyRetries.find((r) => !isSpotOnCooldown(r.card.spotId, lastShownSpotIdsRef.current, settings.sameSpotCooldown));
+      if (retry) {
+        retryQueueRef.current = retryQueueRef.current.filter((r) => r !== retry);
+        const fresh = allCards.find((c) => c.id === retry.card.id);
+        return fresh ?? retry.card;
+      }
     }
 
     // 2. Classify pools
@@ -257,7 +324,7 @@ export default function Trainer() {
 
     // 3. Every Nth card — force review sampling
     if (count > 0 && count % REVIEW_SAMPLE_EVERY_N === 0 && reviewPool.length > 0) {
-      return pickNextCard(reviewPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+      return pickRespectingCooldown(reviewPool);
     }
 
     // 4. Determine which pool to draw from
@@ -266,23 +333,26 @@ export default function Trainer() {
 
     // Problem pool (highest priority)
     if (roll < 0.55 && problemPool.length > 0) {
-      return pickNextCard(problemPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+      const picked = pickRespectingCooldown(problemPool);
+      if (picked) return picked;
     }
 
     // Learning pool
     if (roll < 0.55 + 0.35 - newRatio && learningPool.length > 0) {
-      return pickNextCard(learningPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+      const picked = pickRespectingCooldown(learningPool);
+      if (picked) return picked;
     }
 
     // New cards
     if (newPool.length > 0) {
-      return pickNextCard(newPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+      const picked = pickRespectingCooldown(newPool);
+      if (picked) return picked;
     }
 
     // Fallback: anything available
     const combined = [...problemPool, ...learningPool, ...reviewPool];
     if (combined.length > 0) {
-      return pickNextCard(combined, recentHandsRef.current, lastShownSpotIdsRef.current);
+      return pickRespectingCooldown(combined);
     }
 
     return null;
@@ -343,19 +413,26 @@ export default function Trainer() {
     });
     const grade = !isCorrect && errorClassification.type === 'depth_confusion' ? 'hard' : baseGrade;
 
-    const updatedCard = scheduleCard(currentCard, grade);
+    const updatedCard = scheduleCard(currentCard, grade, { desiredRetention: settings.desiredRetention });
     updatedCard.stats.shown += 1;
     if (isCorrect) {
       updatedCard.stats.correct += 1;
       updatedCard.stats.streak += 1;
+      retryAttemptsRef.current.delete(updatedCard.id);
+      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
     } else {
       updatedCard.stats.wrong += 1;
       updatedCard.stats.streak = 0;
 
-      // Add to retry queue — will come back after RETRY_DELAY_CARDS
+      const attempt = (retryAttemptsRef.current.get(updatedCard.id) ?? 0) + 1;
+      retryAttemptsRef.current.set(updatedCard.id, attempt);
+      const delaySec = getRetryDelaySeconds(attempt, settings.retryMinDelaySec);
+
+      // Add to retry queue — will come back after a time delay
+      retryQueueRef.current = retryQueueRef.current.filter((r) => r.card.id !== updatedCard.id);
       retryQueueRef.current.push({
         card: updatedCard,
-        showAfterCount: cardCountRef.current + RETRY_DELAY_CARDS,
+        retryAfterTimestamp: Date.now() + delaySec * 1000,
       });
     }
     const n = updatedCard.stats.shown;
@@ -383,6 +460,14 @@ export default function Trainer() {
       timestamp: Date.now(),
       errorType,
     };
+
+    const structuralDifficulty = updatedCard.memory.structuralDifficulty ?? updatedCard.memory.difficulty;
+    updatedCard.memory.difficulty = recalibrateCardDifficulty(
+      updatedCard,
+      [...sessionHistoryRef.current, answer],
+      structuralDifficulty
+    );
+    sessionHistoryRef.current = [...sessionHistoryRef.current, answer];
 
     await saveCard(updatedCard);
     await saveSession(answer);

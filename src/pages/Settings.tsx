@@ -25,6 +25,9 @@ export default function Settings() {
       fastResponseMs: Math.max(200, Math.round(settings.fastResponseMs)),
       slowResponseMs: Math.max(1000, Math.round(settings.slowResponseMs)),
       mixThreshold: Math.max(0, Math.min(1, Number(settings.mixThreshold.toFixed(2)))),
+      desiredRetention: Math.max(0.7, Math.min(0.99, Number(settings.desiredRetention.toFixed(2)))),
+      retryMinDelaySec: Math.max(10, Math.round(settings.retryMinDelaySec)),
+      sameSpotCooldown: Math.max(2, Math.round(settings.sameSpotCooldown)),
     };
     if (normalized.fastResponseMs >= normalized.slowResponseMs) {
       setError('Fast response threshold must be less than slow response threshold.');
@@ -108,6 +111,38 @@ export default function Settings() {
               step={0.01}
               value={settings.mixThreshold}
               onChange={(e) => update('mixThreshold', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Desired retention (FSRS)</span>
+            <input
+              type="number"
+              min={0.7}
+              max={0.99}
+              step={0.01}
+              value={settings.desiredRetention}
+              onChange={(e) => update('desiredRetention', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Retry minimum delay (sec)</span>
+            <input
+              type="number"
+              min={10}
+              value={settings.retryMinDelaySec}
+              onChange={(e) => update('retryMinDelaySec', Number(e.target.value))}
+              className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-gray-700">Same spot cooldown (cards)</span>
+            <input
+              type="number"
+              min={2}
+              value={settings.sameSpotCooldown}
+              onChange={(e) => update('sameSpotCooldown', Number(e.target.value))}
               className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
