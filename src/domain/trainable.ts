@@ -14,7 +14,8 @@ export const NON_BORDER_TRASH_FOCUS_MULTIPLIER = 0.08;
 export function getPureAction(frequencies: HandFrequencies): Action | null {
   const actions: Action[] = ['fold', 'call', 'raise', 'jam'];
   for (const action of actions) {
-    if (Math.abs(frequencies[action] - 1) >= FREQUENCY_EPSILON) continue;
+    const isPureForAction = Math.abs(frequencies[action] - 1) < FREQUENCY_EPSILON;
+    if (!isPureForAction) continue;
     const others = actions.filter((candidate) => candidate !== action);
     if (others.every((candidate) => frequencies[candidate] <= FREQUENCY_EPSILON)) {
       return action;

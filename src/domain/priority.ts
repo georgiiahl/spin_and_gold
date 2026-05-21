@@ -91,11 +91,13 @@ export function calculatePriority(card: TrainerCard, focusMixed = false, range?:
   const novelty = calculateNovelty(card);
   const speedFactor = calculateSpeedFactor(card);
   const mixedBoost = calculateMixedBoost(card, focusMixed);
-  const borderBoost = focusMixed && isPureFold(card.frequencies) && range && isBorderHand(card.hand, range)
-    ? BORDER_FOLD_BOOST
-    : 1;
+  const borderBoost = shouldApplyBorderFoldBoost(card, focusMixed, range) ? BORDER_FOLD_BOOST : 1;
 
   return urgency * mistakeWeight * mixWeight * trashSuppression * novelty * speedFactor * mixedBoost * borderBoost;
+}
+
+function shouldApplyBorderFoldBoost(card: TrainerCard, focusMixed: boolean, range?: SpotRange): boolean {
+  return !!(focusMixed && isPureFold(card.frequencies) && range && isBorderHand(card.hand, range));
 }
 
 function calculateUrgency(card: TrainerCard, now: number): number {
