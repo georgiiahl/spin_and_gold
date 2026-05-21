@@ -51,7 +51,7 @@ export default function SpotList() {
   const groupedEntries = Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
 
   return (
-    <div className="mx-auto max-w-4xl p-4">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Spots</h1>
         <Link
@@ -155,9 +155,6 @@ export default function SpotList() {
         </div>
       )}
 
-      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
-        ← Dashboard
-      </Link>
     </div>
   );
 }

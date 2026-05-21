@@ -34,11 +34,11 @@ export default function SpotStats() {
     );
   }, [id]);
 
-  if (loading) return <div className="p-4 text-gray-500">Loading...</div>;
+  if (loading) return <div className="text-gray-500">Loading...</div>;
 
   if (!spot) {
     return (
-      <div className="p-4">
+      <div>
         <p className="text-red-600">Spot not found.</p>
         <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
       </div>
@@ -50,7 +50,7 @@ export default function SpotStats() {
   const errorHeatmap = [...getErrorHeatmap(sessions).entries()].sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="p-4">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="mb-4">
         <h1 className="text-xl font-bold">Spot Statistics</h1>
         <div className="text-xs text-gray-500">{spot.title}</div>

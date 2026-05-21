@@ -35,7 +35,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
-        navigateFallback: '/spin_and_gold/index.html',
+        navigateFallback: '/spin_and_gold/',
       },
     }),
   ],

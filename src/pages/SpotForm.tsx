@@ -111,7 +111,7 @@ export default function SpotForm() {
   }
 
   return (
-    <div className="mx-auto max-w-xl p-4">
+    <div className="mx-auto w-full max-w-xl">
       <h1 className="text-xl font-bold mb-4">{isEdit ? 'Edit Spot' : 'New Spot'}</h1>
 
       <div className="flex flex-col gap-4">

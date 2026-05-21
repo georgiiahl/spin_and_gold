@@ -29,11 +29,11 @@ export default function StudyMode() {
   const selectedClass = selectedHand && selectedFreq ? classifyHand(selectedHand, selectedFreq, borderHands) : 'empty';
 
   if (!spot) {
-    return <div className="p-4 text-gray-500">Loading...</div>;
+    return <div className="text-gray-500">Loading...</div>;
   }
 
   return (
-    <div className="p-4">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="mb-3">
         <h1 className="text-lg font-bold">Study Mode</h1>
         <div className="text-xs text-gray-500">{spot.title}</div>

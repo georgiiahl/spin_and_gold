@@ -68,11 +68,11 @@ export default function BorderTrainer() {
     setCurrentIdx((i) => (i + 1) % borderHands.length);
   }
 
-  if (!spot) return <div className="p-4 text-gray-500">Loading...</div>;
+  if (!spot) return <div className="text-gray-500">Loading...</div>;
 
   if (borderHands.length === 0) {
     return (
-      <div className="p-4">
+      <div>
         <p className="text-yellow-600">No border hands found. Fill the chart first.</p>
         <Link to={`/spots/${id}/range`} className="mt-2 block text-sm text-blue-600">Open Chart Editor</Link>
       </div>
@@ -82,7 +82,7 @@ export default function BorderTrainer() {
   const currentHand = borderHands[currentIdx];
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col p-4">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
       <div className="mb-4">
         <h1 className="text-lg font-bold">Border Trainer</h1>
         <div className="text-xs text-gray-500">{spot.title}</div>

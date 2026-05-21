@@ -642,12 +642,12 @@ export default function Trainer() {
   // --- RENDER ---
 
   if (loading) {
-    return <div className="flex h-[100dvh] items-center justify-center text-gray-400">Loading...</div>;
+    return <div className="flex min-h-[40vh] items-center justify-center text-gray-400">Loading...</div>;
   }
 
   if (!currentSpot) {
     return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 p-4">
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2">
         <p className="text-red-600">{category ? 'Category not found.' : 'Spot not found.'}</p>
         <Link to="/spots" className="text-sm text-blue-600">Back to spots</Link>
       </div>
@@ -656,7 +656,7 @@ export default function Trainer() {
 
   if (cards.length === 0) {
     return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 p-4">
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2">
         <p className="text-yellow-600">No hands in range. Fill the chart first.</p>
         <Link to={`/spots/${currentSpot.id}/range`} className="text-sm text-blue-600">Open Chart Editor</Link>
       </div>
@@ -672,7 +672,7 @@ export default function Trainer() {
   const isMixTotalValid = Math.abs(mixAllocationTotal - MIX_TOTAL_TARGET) < MIX_TOTAL_EPSILON;
 
   return (
-    <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col pb-[env(safe-area-inset-bottom)]">
       {/* Top bar */}
       <div className="flex items-center justify-between py-2">
         <span className="max-w-[60%] truncate text-xs text-gray-400">

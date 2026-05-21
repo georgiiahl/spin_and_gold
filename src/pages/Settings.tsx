@@ -1,6 +1,66 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Switch } from '@headlessui/react';
 import { AppSettings, DEFAULT_SETTINGS, loadSettings, saveSettings } from '@/storage/settings';
+
+type Preset = {
+  name: string;
+  values: Pick<AppSettings, 'mixStrategy' | 'showMixButton' | 'focusOnMixedHands' | 'includeTrashHandsInTraining'>;
+};
+
+const PRESETS: Preset[] = [
+  {
+    name: 'Strict Frequencies',
+    values: {
+      mixStrategy: 'strict',
+      showMixButton: true,
+      focusOnMixedHands: true,
+      includeTrashHandsInTraining: false,
+    },
+  },
+  {
+    name: 'Action Only',
+    values: {
+      mixStrategy: 'tolerant',
+      showMixButton: false,
+      focusOnMixedHands: false,
+      includeTrashHandsInTraining: true,
+    },
+  },
+  {
+    name: 'Balanced',
+    values: {
+      mixStrategy: 'tolerant',
+      showMixButton: true,
+      focusOnMixedHands: false,
+      includeTrashHandsInTraining: false,
+    },
+  },
+];
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-gray-700">{label}</span>
+      <Switch
+        checked={checked}
+        onChange={onChange}
+        className={`group inline-flex min-h-[44px] w-14 items-center rounded-full p-1 transition ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
+      >
+        <span
+          className={`h-6 w-6 rounded-full bg-white transition ${checked ? 'translate-x-6' : 'translate-x-0'}`}
+        />
+      </Switch>
+    </label>
+  );
+}
 
 export default function Settings() {
   const [savedSettings, setSavedSettings] = useState<AppSettings>(() => loadSettings());
@@ -11,11 +71,30 @@ export default function Settings() {
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
     [settings, savedSettings]
   );
+  const conflictWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (settings.showMixButton && settings.mixStrategy === 'tolerant') {
+      warnings.push('Mix button is enabled, but tolerant strategy does not enforce exact mix frequencies.');
+    }
+    if (settings.focusOnMixedHands && settings.includeTrashHandsInTraining) {
+      warnings.push('Focus on mixed hands conflicts with including trash hands in training.');
+    }
+    if (settings.focusOnMixedHands && settings.mixStrategy === 'tolerant') {
+      warnings.push('Focusing mixed hands with tolerant strategy does not enforce strict mix accuracy.');
+    }
+    return warnings;
+  }, [settings]);
 
   function update<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
     setSaved(false);
     setError('');
     setSettings((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function applyPreset(preset: Preset) {
+    setSaved(false);
+    setError('');
+    setSettings((prev) => ({ ...prev, ...preset.values }));
   }
 
   function handleSave() {
@@ -46,10 +125,35 @@ export default function Settings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
-      <h1 className="text-xl font-bold mb-4">Settings</h1>
+    <div className="mx-auto w-full max-w-2xl">
+      <h1 className="mb-4 text-xl font-bold">Settings</h1>
 
       <div className="space-y-4">
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="font-semibold">Presets</h2>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+          {conflictWarnings.length > 0 && (
+            <div className="space-y-2">
+              {conflictWarnings.map((warning) => (
+                <div key={warning} className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+                  {warning}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="font-semibold">Visual Mode</h2>
           <label className="flex items-center justify-between gap-3 text-sm">
@@ -146,57 +250,39 @@ export default function Settings() {
               className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-900"
             />
           </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Show frequencies in feedback</span>
-            <input
-              type="checkbox"
-              checked={settings.showFrequenciesInFeedback}
-              onChange={(e) => update('showFrequenciesInFeedback', e.target.checked)}
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Include trash hands in training</span>
-            <input
-              type="checkbox"
-              checked={settings.includeTrashHandsInTraining}
-              onChange={(e) => update('includeTrashHandsInTraining', e.target.checked)}
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Focus on mixed hands</span>
-            <input
-              type="checkbox"
-              checked={settings.focusOnMixedHands}
-              onChange={(e) => update('focusOnMixedHands', e.target.checked)}
-            />
-          </label>
+          <ToggleRow
+            label="Show frequencies in feedback"
+            checked={settings.showFrequenciesInFeedback}
+            onChange={(checked) => update('showFrequenciesInFeedback', checked)}
+          />
+          <ToggleRow
+            label="Include trash hands in training"
+            checked={settings.includeTrashHandsInTraining}
+            onChange={(checked) => update('includeTrashHandsInTraining', checked)}
+          />
+          <ToggleRow
+            label="Focus on mixed hands"
+            checked={settings.focusOnMixedHands}
+            onChange={(checked) => update('focusOnMixedHands', checked)}
+          />
           <p className="text-xs text-gray-500">
             Prioritizes 75/25, 50/50, and 25/75 hands, suppresses pure actions. Border hands always get priority boost.
           </p>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Show Mix button for mixed hands</span>
-            <input
-              type="checkbox"
-              checked={settings.showMixButton}
-              onChange={(e) => update('showMixButton', e.target.checked)}
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Feedback sounds</span>
-            <input
-              type="checkbox"
-              checked={settings.feedbackSounds}
-              onChange={(e) => update('feedbackSounds', e.target.checked)}
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-gray-700">Feedback vibration</span>
-            <input
-              type="checkbox"
-              checked={settings.feedbackVibration}
-              onChange={(e) => update('feedbackVibration', e.target.checked)}
-            />
-          </label>
+          <ToggleRow
+            label="Show Mix button for mixed hands"
+            checked={settings.showMixButton}
+            onChange={(checked) => update('showMixButton', checked)}
+          />
+          <ToggleRow
+            label="Feedback sounds"
+            checked={settings.feedbackSounds}
+            onChange={(checked) => update('feedbackSounds', checked)}
+          />
+          <ToggleRow
+            label="Feedback vibration"
+            checked={settings.feedbackVibration}
+            onChange={(checked) => update('feedbackVibration', checked)}
+          />
         </section>
       </div>
 
@@ -217,10 +303,6 @@ export default function Settings() {
       </div>
 
       {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
-
-      <Link to="/" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
-        ← Dashboard
-      </Link>
     </div>
   );
 }
