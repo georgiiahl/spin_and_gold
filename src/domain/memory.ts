@@ -86,6 +86,7 @@ export function migrateCardMemory(card: TrainerCard): TrainerCard {
   const oldInterval = typeof mem.intervalDays === 'number' ? mem.intervalDays : 0;
   const oldReps = typeof mem.repetitions === 'number' ? mem.repetitions : 0;
   const phase = (mem.phase ?? 'new') as CardPhase;
+  // Legacy ease range is ~[1.3, 3.0]; map it inversely to FSRS difficulty scale [1, 10].
   const estimatedDifficulty = clampDifficulty(10 - (oldEase - 1.3) * 4);
   const lastReview = updated.stats.lastAnswerAt ?? mem.dueAt;
 
@@ -135,7 +136,7 @@ export function createNewCard(
       ease: DEFAULT_EASE,
       intervalDays: 0,
       repetitions: 0,
-      dueAt: Date.now(),
+      dueAt: undefined,
       lapses: 0,
       learningStep: 0,
       consecutiveHardOnStep: 0,

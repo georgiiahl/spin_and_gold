@@ -13,7 +13,7 @@ import {
 import { ALL_HANDS } from '@/domain/hands';
 import { getSpot, getSpotsByCategory } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
-import { getAllSessions, saveSession } from '@/storage/sessions';
+import { getSessionsBySpot, saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
 import { createNewCard, determineGrade, migrateCardMemory, scheduleCard } from '@/domain/memory';
 import {
@@ -59,6 +59,7 @@ const RECENT_HANDS_LIMIT = 10;
 const RECENT_SPOTS_LIMIT = 6;
 const MAX_DEPTH_DIFFERENCE_BB = 3;
 const HIGHLIGHT_MS = 1200;
+const RETRY_SAME_SPOT_DEFER_MS = 60_000;
 
 type FeedbackState = {
   kind: FeedbackKind;
@@ -70,6 +71,15 @@ type FeedbackState = {
   frequencies: HandFrequencies;
   confusedWithSpot?: Spot;
 } | null;
+
+function memoryNeedsPersist(previous: TrainerCard, next: TrainerCard): boolean {
+  return previous.memory.difficulty !== next.memory.difficulty
+    || previous.memory.stability !== next.memory.stability
+    || previous.memory.reps !== next.memory.reps
+    || previous.memory.state !== next.memory.state
+    || previous.memory.last_review !== next.memory.last_review
+    || previous.memory.structuralDifficulty !== next.memory.structuralDifficulty;
+}
 
 export default function Trainer() {
   const { id } = useParams<{ id: string }>();
@@ -159,7 +169,6 @@ export default function Trainer() {
     cardCountRef.current = 0;
     recentHandsRef.current = [];
     lastShownSpotIdsRef.current = [];
-    sessionHistoryRef.current = await getAllSessions();
 
     const selectedSpots = id
       ? [await getSpot(id)].filter((spot): spot is Spot => Boolean(spot))
@@ -171,6 +180,11 @@ export default function Trainer() {
       setLoading(false);
       return;
     }
+
+    const sessionsBySpot = await Promise.all(
+      selectedSpots.map((spot) => getSessionsBySpot(spot.id))
+    );
+    sessionHistoryRef.current = sessionsBySpot.flat();
 
     const categoryLabel = category ?? getSpotCategoryLabel(selectedSpots[0].category);
     setTrainingCategoryLabel(categoryLabel);
@@ -217,7 +231,7 @@ export default function Trainer() {
             structuralDifficulty
           );
           allCards.push(migrated);
-          if (JSON.stringify(existing.memory) !== JSON.stringify(migrated.memory)) {
+          if (memoryNeedsPersist(existing, migrated)) {
             cardsToPersist.push(migrated);
           }
         } else {
@@ -292,7 +306,7 @@ export default function Trainer() {
       const seenSpots = new Set<string>();
       for (const retry of readyRetries) {
         if (seenSpots.has(retry.card.spotId)) {
-          retry.retryAfterTimestamp = now + 60_000;
+          retry.retryAfterTimestamp = now + RETRY_SAME_SPOT_DEFER_MS;
           continue;
         }
         seenSpots.add(retry.card.spotId);

@@ -1,5 +1,8 @@
 import { Action, HandFrequencies, SessionAnswer, Spot, SpotRange, TrainerCard } from '@/domain/types';
 
+const MIN_SESSIONS_FOR_RECALIBRATION = 20;
+const MAX_SESSIONS_FOR_FULL_WEIGHT = 100;
+
 function getPrimaryAction(freq: HandFrequencies): Action {
   const actions: Action[] = ['fold', 'call', 'raise', 'jam'];
   return actions.reduce((best, action) => (freq[action] > freq[best] ? action : best), 'fold' as Action);
@@ -63,11 +66,11 @@ export function recalibrateCardDifficulty(
   structuralDifficulty: number
 ): number {
   const cardSessions = sessions.filter((s) => s.spotId === card.spotId && s.hand === card.hand);
-  if (cardSessions.length < 20) return structuralDifficulty;
+  if (cardSessions.length < MIN_SESSIONS_FOR_RECALIBRATION) return structuralDifficulty;
 
   const accuracy = cardSessions.filter((s) => s.isCorrect).length / cardSessions.length;
   const observedDifficulty = (1 - accuracy) * 10;
-  const weight = Math.min(1, cardSessions.length / 100);
+  const weight = Math.min(1, cardSessions.length / MAX_SESSIONS_FOR_FULL_WEIGHT);
 
   return clampDifficulty(structuralDifficulty * (1 - weight) + observedDifficulty * weight);
 }
