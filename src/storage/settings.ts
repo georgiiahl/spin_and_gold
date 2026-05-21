@@ -17,6 +17,8 @@ export type AppSettings = {
 
 const SETTINGS_KEY = 'spin-gold-settings-v1';
 
+export { SETTINGS_KEY };
+
 export const DEFAULT_SETTINGS: AppSettings = {
   flashDurationSec: 2,
   fastResponseMs: 1200,
