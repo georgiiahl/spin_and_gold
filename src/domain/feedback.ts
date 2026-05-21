@@ -10,49 +10,48 @@ type FeedbackOptions = {
   feedbackVibration: boolean;
 };
 
-// Duolingo-style cheerful sounds using chord progressions
+type NoteSequence = {
+  notes: Array<{ freq: number; startMs: number; durationMs: number }>;
+  type: OscillatorType;
+  gain: number;
+};
+
 const SOUND_CONFIG: Record<FeedbackKind, NoteSequence | null> = {
   correct: {
     notes: [
-      { freq: 523.25, startMs: 0, durationMs: 80 },    // C5
-      { freq: 659.25, startMs: 60, durationMs: 80 },   // E5
-      { freq: 783.99, startMs: 120, durationMs: 160 },  // G5
+      { freq: 523.25, startMs: 0, durationMs: 80 },
+      { freq: 659.25, startMs: 60, durationMs: 80 },
+      { freq: 783.99, startMs: 120, durationMs: 160 },
     ],
     type: 'sine',
     gain: 0.12,
   },
   slow_correct: {
     notes: [
-      { freq: 523.25, startMs: 0, durationMs: 100 },   // C5
-      { freq: 659.25, startMs: 80, durationMs: 120 },  // E5
+      { freq: 523.25, startMs: 0, durationMs: 100 },
+      { freq: 659.25, startMs: 80, durationMs: 120 },
     ],
     type: 'sine',
     gain: 0.08,
   },
   depth_confusion: {
     notes: [
-      { freq: 440, startMs: 0, durationMs: 120 },      // A4
-      { freq: 370, startMs: 100, durationMs: 120 },    // F#4
-      { freq: 440, startMs: 220, durationMs: 150 },    // A4
+      { freq: 440, startMs: 0, durationMs: 120 },
+      { freq: 370, startMs: 100, durationMs: 120 },
+      { freq: 440, startMs: 220, durationMs: 150 },
     ],
     type: 'triangle',
     gain: 0.10,
   },
   wrong: {
     notes: [
-      { freq: 311, startMs: 0, durationMs: 150 },      // Eb4
-      { freq: 277, startMs: 130, durationMs: 200 },    // C#4
+      { freq: 311, startMs: 0, durationMs: 150 },
+      { freq: 277, startMs: 130, durationMs: 200 },
     ],
     type: 'sine',
     gain: 0.10,
   },
   mix_acceptable: null,
-};
-
-type NoteSequence = {
-  notes: Array<{ freq: number; startMs: number; durationMs: number }>;
-  type: OscillatorType;
-  gain: number;
 };
 
 const VIBRATE_CONFIG: Record<FeedbackKind, number[] | null> = {
@@ -64,33 +63,48 @@ const VIBRATE_CONFIG: Record<FeedbackKind, number[] | null> = {
 };
 
 let audioCtx: AudioContext | null = null;
+let audioUnlocked = false;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
-    audioCtx = new AudioContext();
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   return audioCtx;
 }
 
+/**
+ * Must be called DIRECTLY inside a user gesture (click/touchend handler).
+ * Unlocks AudioContext on iOS and plays the sound immediately.
+ */
 export function triggerFeedback(kind: FeedbackKind, options: FeedbackOptions) {
+  // Unlock audio on first interaction (iOS requirement)
   if (options.feedbackSounds) {
-    playChord(kind);
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    if (!audioUnlocked) {
+      // Play a silent buffer to unlock iOS audio
+      const silentBuffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      audioUnlocked = true;
+    }
+    playChord(kind, ctx);
   }
+
   if (options.feedbackVibration) {
     vibrate(kind);
   }
 }
 
-function playChord(kind: FeedbackKind) {
+function playChord(kind: FeedbackKind, ctx: AudioContext) {
   const config = SOUND_CONFIG[kind];
   if (!config) return;
 
   try {
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-
     for (const note of config.notes) {
       const startTime = ctx.currentTime + note.startMs / 1000;
       const duration = note.durationMs / 1000;
@@ -101,7 +115,7 @@ function playChord(kind: FeedbackKind) {
       osc.type = config.type;
       osc.frequency.setValueAtTime(note.freq, startTime);
 
-      // Smooth bell-like envelope
+      // Bell-like envelope
       gainNode.gain.setValueAtTime(0, startTime);
       gainNode.gain.linearRampToValueAtTime(config.gain, startTime + 0.015);
       gainNode.gain.setValueAtTime(config.gain, startTime + duration * 0.3);
