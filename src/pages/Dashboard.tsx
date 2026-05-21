@@ -170,6 +170,13 @@ export default function Dashboard() {
           <div className="text-sm text-gray-500">Manage your preflop spots</div>
         </Link>
         <Link
+          to="/forecast"
+          className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+        >
+          <div className="font-semibold">Forecast</div>
+          <div className="text-sm text-gray-500">Workload forecast and pool breakdown</div>
+        </Link>
+        <Link
           to="/stats"
           className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
