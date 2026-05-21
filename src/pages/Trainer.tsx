@@ -13,14 +13,18 @@ import {
 import { ALL_HANDS } from '@/domain/hands';
 import { getSpot, getSpotsByCategory } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
-import { getAllSessions, saveSession } from '@/storage/sessions';
+import { saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
 import { createNewCard, determineGrade, scheduleCard } from '@/domain/memory';
-import { pickNextCard } from '@/domain/priority';
+import {
+  pickNextCard,
+  classifyCardPool,
+  getNewCardRatio,
+  RETRY_DELAY_CARDS,
+  REVIEW_SAMPLE_EVERY_N,
+} from '@/domain/priority';
 import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
-import SessionSummary from '@/components/SessionSummary';
-import { buildCategoryProgress } from '@/domain/progress';
 import { FeedbackKind, triggerFeedback } from '@/domain/feedback';
 
 const ACTION_LABELS: Record<Action, string> = {
@@ -30,24 +34,29 @@ const ACTION_LABELS: Record<Action, string> = {
   jam: 'Jam',
 };
 const ACTION_BUTTON_CLASSES: Record<Action, string> = {
-  fold: 'bg-gray-500 hover:bg-gray-400',
-  call: 'bg-green-600 hover:bg-green-500',
-  raise: 'bg-blue-600 hover:bg-blue-500',
-  jam: 'bg-red-600 hover:bg-red-500',
+  fold: 'bg-gray-500',
+  call: 'bg-green-600',
+  raise: 'bg-blue-600',
+  jam: 'bg-red-600',
 };
 const ACTION_TEXT_CLASSES: Record<Action, string> = {
-  fold: 'text-fold',
-  call: 'text-call',
-  raise: 'text-raise',
-  jam: 'text-jam',
+  fold: 'text-gray-600',
+  call: 'text-green-600',
+  raise: 'text-blue-600',
+  jam: 'text-red-600',
+};
+const ACTION_BAR_COLORS: Record<Action, string> = {
+  fold: 'bg-gray-400',
+  call: 'bg-green-500',
+  raise: 'bg-blue-500',
+  jam: 'bg-red-500',
 };
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
-const RECENT_HANDS_LIMIT = 8;
+const RECENT_HANDS_LIMIT = 10;
 const RECENT_SPOTS_LIMIT = 3;
 const MAX_DEPTH_DIFFERENCE_BB = 3;
-const MS_PER_MINUTE = 60_000;
-const DEPTH_HIGHLIGHT_MS = 900;
+const HIGHLIGHT_MS = 1200;
 
 type FeedbackState = {
   kind: FeedbackKind;
@@ -71,28 +80,23 @@ export default function Trainer() {
   const [rangesBySpot, setRangesBySpot] = useState<Map<string, SpotRange>>(new Map());
   const [currentCard, setCurrentCard] = useState<TrainerCard | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [barRevealed, setBarRevealed] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [sessionEnded, setSessionEnded] = useState(false);
-  const [fixMode, setFixMode] = useState(false);
-  const [pendingMistakeIds, setPendingMistakeIds] = useState<string[]>([]);
-  const [remainingDueIds, setRemainingDueIds] = useState<string[]>([]);
-  const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
-  const [historySessions, setHistorySessions] = useState<SessionAnswer[]>([]);
-  const [sessionStartMs, setSessionStartMs] = useState<number>(Date.now());
-  const [clockMs, setClockMs] = useState<number>(Date.now());
-  const [levelBefore, setLevelBefore] = useState(0);
-  const [levelAfter, setLevelAfter] = useState(0);
   const [trainingCategoryLabel, setTrainingCategoryLabel] = useState('Category');
-  const [depthHighlight, setDepthHighlight] = useState(false);
-  // @ts-ignore
-  const [forceTrainAll, setForceTrainAll] = useState(false);
+  const [highlightStack, setHighlightStack] = useState(false);
+  const [highlightPosition, setHighlightPosition] = useState(false);
+
+  // Retry queue: cards that were answered wrong, come back after N cards
+  const retryQueueRef = useRef<Array<{ card: TrainerCard; showAfterCount: number }>>([]);
+  const cardCountRef = useRef(0);
 
   const startTimeRef = useRef<number>(0);
   const recentHandsRef = useRef<string[]>([]);
   const lastShownSpotIdsRef = useRef<string[]>([]);
   const prevDepthRef = useRef<number | null>(null);
+  const prevPositionRef = useRef<string | null>(null);
 
   const currentSpot = useMemo(
     () => spots.find((spot) => spot.id === currentCard?.spotId) ?? spots[0] ?? null,
@@ -104,55 +108,50 @@ export default function Trainer() {
     for (const range of rangesBySpot.values()) {
       for (const hand of Object.values(range)) {
         for (const action of ACTIONS) {
-          if (hand[action] > 0) {
-            actionSet.add(action);
-          }
+          if (hand[action] > 0) actionSet.add(action);
         }
       }
     }
-    const actions = ACTIONS.filter((action) => actionSet.has(action));
+    const actions = ACTIONS.filter((a) => actionSet.has(a));
     return actions.length > 0 ? actions : ACTIONS;
   }, [rangesBySpot]);
 
-  const timeLimitMs = settings.sessionTimeLimitMin * MS_PER_MINUTE;
-  const timedRemainingMs = Math.max(0, timeLimitMs - (clockMs - sessionStartMs));
-  const isTimedLimitReached = settings.sessionMode === 'timed' && (clockMs - sessionStartMs) >= timeLimitMs;
-  const isCardLimitReached = settings.sessionMode === 'cards' && sessionCount >= settings.sessionCardLimit;
-
-  useEffect(() => {
-    if (sessionEnded) return;
-    const timer = window.setInterval(() => setClockMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [sessionEnded]);
-
+  // Highlight depth/position changes
   useEffect(() => {
     const depth = currentSpot?.effectiveStackBb;
+    const position = currentSpot?.actingPosition;
     if (depth == null) return;
+
     if (prevDepthRef.current !== null && prevDepthRef.current !== depth) {
+      setHighlightStack(true);
+      const timer = window.setTimeout(() => setHighlightStack(false), HIGHLIGHT_MS);
       prevDepthRef.current = depth;
-      setDepthHighlight(true);
-      const timer = window.setTimeout(() => setDepthHighlight(false), DEPTH_HIGHLIGHT_MS);
       return () => window.clearTimeout(timer);
     }
     prevDepthRef.current = depth;
-  }, [currentSpot?.effectiveStackBb]);
 
-  const initTrainer = useCallback(async (trainAll = false) => {
+    if (prevPositionRef.current !== null && prevPositionRef.current !== position) {
+      setHighlightPosition(true);
+      const timer = window.setTimeout(() => setHighlightPosition(false), HIGHLIGHT_MS);
+      prevPositionRef.current = position ?? null;
+      return () => window.clearTimeout(timer);
+    }
+    prevPositionRef.current = position ?? null;
+  }, [currentSpot?.effectiveStackBb, currentSpot?.actingPosition]);
+
+  const initTrainer = useCallback(async () => {
     setLoading(true);
     setSettings(loadSettings());
-    setSessionEnded(false);
-    setFixMode(false);
-    setForceTrainAll(trainAll);
-    setPendingMistakeIds([]);
-    setRemainingDueIds([]);
-    setSessionAnswers([]);
     setCards([]);
     setSpots([]);
     setRangesBySpot(new Map());
     setCurrentCard(null);
     setFeedback(null);
+    setBarRevealed(false);
     setSessionCount(0);
     setCorrectCount(0);
+    retryQueueRef.current = [];
+    cardCountRef.current = 0;
     recentHandsRef.current = [];
     lastShownSpotIdsRef.current = [];
 
@@ -171,9 +170,6 @@ export default function Trainer() {
     setTrainingCategoryLabel(categoryLabel);
     setSpots(selectedSpots);
 
-    const loadedSessions = await getAllSessions();
-    setHistorySessions(loadedSessions);
-
     const allCards: TrainerCard[] = [];
     const newCards: TrainerCard[] = [];
     const rangeMap = new Map<string, SpotRange>();
@@ -187,7 +183,7 @@ export default function Trainer() {
       if (!range) continue;
       rangeMap.set(selectedSpot.id, range);
 
-      const cardMap = new Map(existingCards.map((card) => [card.hand, card]));
+      const cardMap = new Map(existingCards.map((c) => [c.hand, c]));
       for (const hand of ALL_HANDS) {
         const freq = range[hand];
         if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
@@ -204,146 +200,104 @@ export default function Trainer() {
       }
     }
 
-    if (newCards.length > 0) {
-      await saveCards(newCards);
-    }
+    if (newCards.length > 0) await saveCards(newCards);
 
     setRangesBySpot(rangeMap);
     setCards(allCards);
 
-    const progressBefore = buildCategoryProgress(categoryLabel, selectedSpots, allCards, loadedSessions);
-    setLevelBefore(progressBefore.level);
-    setLevelAfter(progressBefore.level);
-
-    const trainableCards = filterTrainableCards(allCards, settings.includeTrashHandsInTraining);
-
-    // If trainAll — use ALL trainable cards, not just due ones
-    const pool = trainAll
-      ? trainableCards
-      : trainableCards.filter((card) => !card.memory.dueAt || card.memory.dueAt <= Date.now());
-
-    const poolIds = pool.map((card) => card.id);
-    setRemainingDueIds(poolIds);
-    setSessionStartMs(Date.now());
-    setClockMs(Date.now());
-
-    const firstPool = applyMixFocus(pool, settings.focusOnMixedHands);
-    const first = chooseNextCard(firstPool);
-    if (first) {
-      showCard(first);
-    } else {
-      // No cards to train — show empty session summary
-      endSession(allCards);
-    }
+    const trainable = filterTrainableCards(allCards, settings.includeTrashHandsInTraining);
+    const first = pickFromPools(trainable, 0);
+    if (first) showCard(first);
 
     setLoading(false);
-  }, [category, id, settings.focusOnMixedHands, settings.includeTrashHandsInTraining]);
+  }, [category, id, settings.includeTrashHandsInTraining]);
 
   useEffect(() => {
-    initTrainer(false);
+    initTrainer();
   }, [initTrainer]);
 
-  function handleTrainAgain() {
-    initTrainer(true);
-  }
-
-  function rememberShownCard(card: TrainerCard) {
+  function showCard(card: TrainerCard) {
+    setCurrentCard(card);
+    setFeedback(null);
+    setBarRevealed(false);
+    startTimeRef.current = Date.now();
     recentHandsRef.current = [...recentHandsRef.current, card.hand].slice(-RECENT_HANDS_LIMIT);
     lastShownSpotIdsRef.current = [...lastShownSpotIdsRef.current, card.spotId].slice(-RECENT_SPOTS_LIMIT);
   }
 
-  function showCard(card: TrainerCard) {
-    setCurrentCard(card);
-    startTimeRef.current = Date.now();
-    rememberShownCard(card);
-  }
+  /**
+   * Pick next card from pools with retry queue priority.
+   */
+  function pickFromPools(allCards: TrainerCard[], count: number): TrainerCard | null {
+    // 1. Check retry queue first
+    const retryReady = retryQueueRef.current.filter((r) => count >= r.showAfterCount);
+    if (retryReady.length > 0) {
+      const retry = retryReady[0];
+      retryQueueRef.current = retryQueueRef.current.filter((r) => r !== retry);
+      // Get fresh version from cards array
+      const fresh = allCards.find((c) => c.id === retry.card.id);
+      return fresh ?? retry.card;
+    }
 
-  function chooseNextCard(pool: TrainerCard[]): TrainerCard | null {
-    const recentSpotIds = lastShownSpotIdsRef.current;
-    let next = pickNextCard(pool, recentHandsRef.current, recentSpotIds);
-    const nextSpotId = next?.spotId;
+    // 2. Classify pools
+    const problemPool: TrainerCard[] = [];
+    const learningPool: TrainerCard[] = [];
+    const newPool: TrainerCard[] = [];
+    const reviewPool: TrainerCard[] = [];
 
-    if (
-      nextSpotId
-      && recentSpotIds.length === RECENT_SPOTS_LIMIT
-      && recentSpotIds.every((spotId) => spotId === nextSpotId)
-    ) {
-      const alternate = pickNextCard(
-        pool.filter((card) => card.spotId !== nextSpotId),
-        recentHandsRef.current,
-        recentSpotIds
-      );
-      if (alternate) {
-        next = alternate;
+    for (const card of allCards) {
+      const pool = classifyCardPool(card);
+      switch (pool) {
+        case 'problem': problemPool.push(card); break;
+        case 'learning': learningPool.push(card); break;
+        case 'new': newPool.push(card); break;
+        case 'review': reviewPool.push(card); break;
       }
     }
 
-    return next;
-  }
-
-  function shouldEndNormalSession() {
-    if (remainingDueIds.length === 0) return true;
-    if (isTimedLimitReached) return true;
-    if (isCardLimitReached) return true;
-    return false;
-  }
-
-  function endSession(cardSnapshot = cards) {
-    const combinedSessions = [...historySessions, ...sessionAnswers];
-    const progressAfter = buildCategoryProgress(trainingCategoryLabel, spots, cardSnapshot, combinedSessions);
-    setLevelAfter(progressAfter.level);
-    setSessionEnded(true);
-    setCurrentCard(null);
-    setFeedback(null);
-  }
-
-  function startFixMistakes() {
-    if (pendingMistakeIds.length === 0) return;
-    setFixMode(true);
-    setSessionEnded(false);
-    setFeedback(null);
-    const mistakeCards = cards.filter((card) => pendingMistakeIds.includes(card.id));
-    const first = chooseNextCard(mistakeCards);
-    if (first) {
-      showCard(first);
+    // 3. Every Nth card — force review sampling
+    if (count > 0 && count % REVIEW_SAMPLE_EVERY_N === 0 && reviewPool.length > 0) {
+      return pickNextCard(reviewPool, recentHandsRef.current, lastShownSpotIdsRef.current);
     }
+
+    // 4. Determine which pool to draw from
+    const newRatio = getNewCardRatio(problemPool.length, problemPool.length + learningPool.length + newPool.length);
+    const roll = Math.random();
+
+    // Problem pool (highest priority)
+    if (roll < 0.55 && problemPool.length > 0) {
+      return pickNextCard(problemPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+    }
+
+    // Learning pool
+    if (roll < 0.55 + 0.35 - newRatio && learningPool.length > 0) {
+      return pickNextCard(learningPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+    }
+
+    // New cards
+    if (newPool.length > 0) {
+      return pickNextCard(newPool, recentHandsRef.current, lastShownSpotIdsRef.current);
+    }
+
+    // Fallback: anything available
+    const combined = [...problemPool, ...learningPool, ...reviewPool];
+    if (combined.length > 0) {
+      return pickNextCard(combined, recentHandsRef.current, lastShownSpotIdsRef.current);
+    }
+
+    return null;
   }
 
   function pickNext() {
-    if (fixMode) {
-      const mistakeCards = cards.filter((card) => pendingMistakeIds.includes(card.id));
-      if (mistakeCards.length === 0) {
-        setFixMode(false);
-        endSession();
-        return;
-      }
-      const next = chooseNextCard(applyMixFocus(mistakeCards, settings.focusOnMixedHands));
-      if (next) {
-        showCard(next);
-      }
-      setFeedback(null);
-      return;
-    }
+    setBarRevealed(false);
+    setFeedback(null);
+    cardCountRef.current += 1;
 
-    if (shouldEndNormalSession()) {
-      endSession();
-      return;
-    }
-
-    const dueSet = new Set(remainingDueIds);
-    const basePool = filterTrainableCards(cards, settings.includeTrashHandsInTraining)
-      .filter((card) => dueSet.has(card.id));
-
-    if (basePool.length === 0) {
-      endSession();
-      return;
-    }
-
-    const next = chooseNextCard(applyMixFocus(basePool, settings.focusOnMixedHands));
+    const trainable = filterTrainableCards(cards, settings.includeTrashHandsInTraining);
+    const next = pickFromPools(trainable, cardCountRef.current);
     if (next) {
       showCard(next);
     }
-    setFeedback(null);
   }
 
   const handleAnswer = useCallback(async (action: Action) => {
@@ -397,6 +351,12 @@ export default function Trainer() {
     } else {
       updatedCard.stats.wrong += 1;
       updatedCard.stats.streak = 0;
+
+      // Add to retry queue — will come back after RETRY_DELAY_CARDS
+      retryQueueRef.current.push({
+        card: updatedCard,
+        showAfterCount: cardCountRef.current + RETRY_DELAY_CARDS,
+      });
     }
     const n = updatedCard.stats.shown;
     updatedCard.stats.avgResponseMs = Math.round(
@@ -405,13 +365,9 @@ export default function Trainer() {
 
     let errorType: SessionAnswer['errorType'];
     if (!isCorrect) {
-      if (errorClassification.type === 'depth_confusion') {
-        errorType = 'depth_confusion';
-      } else if (!isMixAcceptable(tolerant, trueMix, action, primaryAction) && action !== primaryAction && freq[action] > 0) {
-        errorType = 'mix_miss';
-      } else {
-        errorType = 'wrong_action';
-      }
+      if (errorClassification.type === 'depth_confusion') errorType = 'depth_confusion';
+      else if (action !== primaryAction && freq[action] > 0) errorType = 'mix_miss';
+      else errorType = 'wrong_action';
     }
 
     const answer: SessionAnswer = {
@@ -442,269 +398,194 @@ export default function Trainer() {
       confusedWithSpot: errorClassification.confusedWithSpot,
     });
 
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setBarRevealed(true));
+    });
+
     triggerFeedback(feedbackKind, {
       feedbackSounds: settings.feedbackSounds,
       feedbackVibration: settings.feedbackVibration,
     });
 
-    setSessionCount((count) => count + 1);
-    if (isCorrect) {
-      setCorrectCount((count) => count + 1);
-    }
+    setSessionCount((c) => c + 1);
+    if (isCorrect) setCorrectCount((c) => c + 1);
 
-    setCards((prev) => prev.map((card) => (card.id === updatedCard.id ? updatedCard : card)));
-    setSessionAnswers((prev) => [...prev, answer]);
+    setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
+  }, [currentCard, currentSpot, rangesBySpot, settings, spots]);
 
-    if (!fixMode) {
-      setRemainingDueIds((prev) => prev.filter((cardId) => cardId !== currentCard.id));
-      if (!isCorrect) {
-        setPendingMistakeIds((prev) => (prev.includes(currentCard.id) ? prev : [...prev, currentCard.id]));
-      }
-    } else if (isCorrect) {
-      setPendingMistakeIds((prev) => prev.filter((cardId) => cardId !== currentCard.id));
-    }
-  }, [
-    currentCard,
-    currentSpot,
-    fixMode,
-    rangesBySpot,
-    settings.fastResponseMs,
-    settings.feedbackSounds,
-    settings.feedbackVibration,
-    settings.mixStrategy,
-    settings.mixThreshold,
-    settings.slowResponseMs,
-    spots,
-  ]);
+  // --- Live stats ---
+  const accuracy = sessionCount > 0 ? Math.round((correctCount / sessionCount) * 100) : 0;
+  const problemCount = cards.filter((c) => classifyCardPool(c) === 'problem').length;
+  const learningCount = cards.filter((c) => {
+    const p = classifyCardPool(c);
+    return p === 'learning' || p === 'new';
+  }).length;
+  const masteredCount = cards.filter((c) => c.memory.phase === 'mastered' || (c.memory.phase === 'review' && c.memory.intervalDays >= 7)).length;
 
-  const summaryAccuracy = sessionAnswers.length > 0
-    ? Math.round((sessionAnswers.filter((answer) => answer.isCorrect).length / sessionAnswers.length) * 100)
-    : 0;
-  const depthConfusions = sessionAnswers.filter((answer) => answer.errorType === 'depth_confusion').length;
-  const wrongCount = sessionAnswers.filter((answer) => !answer.isCorrect && answer.errorType !== 'depth_confusion').length;
-  const avgResponseMs = sessionAnswers.length > 0
-    ? Math.round(sessionAnswers.reduce((sum, answer) => sum + answer.responseTimeMs, 0) / sessionAnswers.length)
-    : 0;
-
-  const mistakeSummaries = pendingMistakeIds
-    .map((idToFix) => {
-      const [spotId, hand] = idToFix.split(':');
-      const spot = spots.find((item) => item.id === spotId);
-      const card = cards.find((item) => item.id === idToFix);
-      const latestError = [...sessionAnswers].reverse().find(
-        (answer) => answer.spotId === spotId && answer.hand === hand && !answer.isCorrect
-      );
-      if (!spot || !card) return null;
-      return {
-        id: idToFix,
-        hand,
-        spotTitle: spot.title,
-        expectedAction: getPrimaryAction(card.frequencies),
-        errorType: latestError?.errorType,
-      };
-    })
-    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+  // --- RENDER ---
 
   if (loading) {
-    return <div className="p-4 text-gray-500">Loading...</div>;
+    return <div className="flex h-[100dvh] items-center justify-center text-gray-400">Loading...</div>;
   }
 
-  if (!currentSpot && !sessionEnded) {
+  if (!currentSpot) {
     return (
-      <div className="p-4">
+      <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 p-4">
         <p className="text-red-600">{category ? 'Category not found.' : 'Spot not found.'}</p>
-        <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
+        <Link to="/spots" className="text-sm text-blue-600">Back to spots</Link>
       </div>
     );
   }
 
   if (cards.length === 0) {
     return (
-      <div className="p-4">
-        <p className="text-yellow-500">No hands in range. Fill the chart first.</p>
-        {currentSpot && (
-          <Link to={`/spots/${currentSpot.id}/range`} className="text-blue-400 text-sm mt-2 block">
-            Open Chart Editor
-          </Link>
-        )}
+      <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 p-4">
+        <p className="text-yellow-600">No hands in range. Fill the chart first.</p>
+        <Link to={`/spots/${currentSpot.id}/range`} className="text-sm text-blue-600">Open Chart Editor</Link>
       </div>
     );
   }
 
-  if (sessionEnded) {
-    return (
-      <div className="mx-auto flex w-full max-w-md flex-col p-3 sm:p-4">
-        <SessionSummary
-          totalCardsReviewed={sessionAnswers.length}
-          accuracyPercent={summaryAccuracy}
-          depthConfusions={depthConfusions}
-          wrongCount={wrongCount}
-          avgResponseMs={avgResponseMs}
-          levelBefore={levelBefore}
-          levelAfter={levelAfter}
-          mistakes={mistakeSummaries}
-          onStartFixMistakes={startFixMistakes}
-          onTrainAgain={handleTrainAgain}
-          complete={pendingMistakeIds.length === 0}
-        />
-      </div>
-    );
-  }
-
-  const displayCards = buildCards(currentCard?.hand);
-  const sessionInfo = settings.sessionMode === 'timed'
-    ? `${Math.ceil(timedRemainingMs / 1000)}s left`
-    : settings.sessionMode === 'cards'
-      ? `${sessionCount}/${settings.sessionCardLimit} cards`
-      : `Remaining: ${remainingDueIds.length}`;
+  const userAnswerBarPosition = feedback
+    ? getBarPosition(feedback.frequencies, feedback.selectedAction)
+    : 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col p-3 sm:p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="truncate text-xs text-gray-400">
-          {trainingCategoryLabel} · {currentSpot?.title}
-          {fixMode && ' · Fix Mistakes'}
+    <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+      {/* Top bar */}
+      <div className="flex items-center justify-between py-2">
+        <span className="max-w-[60%] truncate text-xs text-gray-400">
+          {trainingCategoryLabel}
         </span>
-        <span className="shrink-0 text-xs text-gray-400">
-          {correctCount}/{sessionCount}
-          {sessionCount > 0 && ` (${Math.round((correctCount / sessionCount) * 100)}%)`}
+        <span className="text-xs text-gray-400">
+          {correctCount}/{sessionCount} · {accuracy}%
         </span>
       </div>
 
-      <PokerTable
-        format={currentSpot?.format ?? '3max'}
-        actingPosition={currentSpot?.actingPosition ?? 'BTN'}
-        history={currentSpot?.history ?? []}
-        effectiveStackBb={currentSpot?.effectiveStackBb ?? 0}
-      />
+      {/* Main — vertically centered */}
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <PokerTable
+          format={currentSpot.format}
+          actingPosition={currentSpot.actingPosition}
+          history={currentSpot.history}
+          effectiveStackBb={currentSpot.effectiveStackBb}
+          hand={currentCard?.hand}
+          highlightStack={highlightStack}
+          highlightPosition={highlightPosition}
+        />
 
-      <div className="mt-3 flex items-center justify-center gap-2">
-        {displayCards?.map((card, index) => (
-          <div
-            key={`${card.rank}${card.suit}-${index}`}
-            className={`flex h-20 w-14 flex-col items-center justify-center rounded-lg text-lg font-bold text-white shadow-sm ${card.backgroundClass}`}
-          >
-            <span className="leading-none">{card.rank}</span>
-            <span className="leading-none text-sm">{card.suit}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className={`mt-3 text-center text-2xl font-semibold ${depthHighlight ? 'animate-pulse-amber text-amber-600' : 'text-gray-900'}`}>
-        {currentSpot?.effectiveStackBb}bb
-      </div>
-
-      <div className="mt-auto pt-3">
-        {currentCard && !feedback && (
-          <div className="w-full">
-            <div className="flex w-full gap-2">
-              {visibleActions.map((action) => (
-                <button
-                  key={action}
-                  onClick={() => handleAnswer(action)}
-                  aria-label={`${ACTION_LABELS[action]} action`}
-                  className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white transition-transform active:scale-95`}
-                >
-                  {ACTION_LABELS[action]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {feedback && (
-          <div className="w-full text-center" role="status" aria-live="polite">
-            <div className={`mb-2 text-xl font-bold ${feedback.kind === 'wrong' ? 'text-red-600' : feedback.kind === 'depth_confusion' ? 'text-amber-600' : 'text-green-600'}`}>
-              {feedback.kind === 'mix_acceptable'
-                ? '~ Mix acceptable'
-                : feedback.kind === 'slow_correct'
-                  ? '✓ Slow but correct'
-                  : feedback.kind === 'depth_confusion'
-                    ? '⚠ Wrong depth'
-                    : feedback.isCorrect
-                      ? '✓ Correct'
-                      : '✗ Wrong'}
-            </div>
-
-            {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
-              <div className="mb-2 inline-flex animate-pulse-amber rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                {ACTION_LABELS[feedback.selectedAction]} is correct at {feedback.confusedWithSpot.effectiveStackBb}bb
+        {/* Frequency bar — always present */}
+        <div className="mt-4 w-full">
+          <div className="relative h-6 w-full overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200">
+            {currentCard && (
+              <div className="absolute inset-0 flex">
+                {ACTIONS.filter((a) => currentCard.frequencies[a] > 0).map((a) => (
+                  <div
+                    key={a}
+                    className={`${ACTION_BAR_COLORS[a]} h-full transition-all duration-700 ease-out`}
+                    style={{ width: barRevealed ? `${currentCard.frequencies[a] * 100}%` : '0%' }}
+                  />
+                ))}
               </div>
             )}
-
-            <div className="mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors duration-300">
-              <div className="mb-1">
-                <span className="text-gray-500">You chose: </span>
-                <span className={`font-semibold ${ACTION_TEXT_CLASSES[feedback.selectedAction]}`}>{ACTION_LABELS[feedback.selectedAction]}</span>
+            {feedback && barRevealed && (
+              <div
+                className="absolute top-0 h-full w-0.5 bg-white shadow transition-all duration-500"
+                style={{ left: `${userAnswerBarPosition}%` }}
+              >
+                <div className={`absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full ring-2 ring-white ${feedback.isCorrect ? 'bg-green-500' : 'bg-red-500'}`} />
+                <div className={`absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full ring-2 ring-white ${feedback.isCorrect ? 'bg-green-500' : 'bg-red-500'}`} />
               </div>
-              <div className="mb-1">
-                <span className="text-gray-500">Primary: </span>
-                <span className={`font-semibold ${ACTION_TEXT_CLASSES[feedback.primaryAction]}`}>{ACTION_LABELS[feedback.primaryAction]}</span>
-              </div>
-              {settings.showFrequenciesInFeedback && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                  <span className="text-gray-500">Freq:</span>
-                  {ACTIONS.filter((action) => feedback.frequencies[action] > 0).map((action) => (
-                    <span key={action} className={`${ACTION_TEXT_CLASSES[action]}`}>
-                      {ACTION_LABELS[action]} {(feedback.frequencies[action] * 100).toFixed(0)}%
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={pickNext}
-              aria-label="Next action"
-              className="w-full rounded-xl bg-blue-600 py-4 text-base font-bold text-white transition-transform hover:bg-blue-500 active:scale-95"
-            >
-              {fixMode
-                ? pendingMistakeIds.length <= 1 && feedback.isCorrect
-                  ? 'Finish session'
-                  : 'Next mistake →'
-                : shouldEndNormalSession()
-                  ? 'View summary'
-                  : 'Next →'}
-            </button>
+            )}
           </div>
-        )}
+          <div className={`mt-1 flex justify-between text-[10px] transition-opacity duration-500 ${barRevealed ? 'opacity-100' : 'opacity-0'}`}>
+            {currentCard && ACTIONS.filter((a) => currentCard.frequencies[a] > 0).map((a) => (
+              <span key={a} className={`${ACTION_TEXT_CLASSES[a]} font-medium`}>
+                {ACTION_LABELS[a]} {(currentCard.frequencies[a] * 100).toFixed(0)}%
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Action / Feedback area — fixed height */}
+        <div className="mt-4 h-[130px] w-full">
+          {currentCard && !feedback && (
+            <div className="flex h-full flex-col justify-center">
+              <div className="flex gap-3" role="group" aria-label="Action buttons">
+                {visibleActions.map((action) => (
+                  <button
+                    key={action}
+                    onClick={() => handleAnswer(action)}
+                    aria-label={`${ACTION_LABELS[action]} action`}
+                    className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white active:scale-95`}
+                  >
+                    {ACTION_LABELS[action]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {feedback && (
+            <div role="status" aria-live="polite" className="flex h-full flex-col justify-center space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <span className={`text-xl font-bold ${
+                  feedback.kind === 'wrong' ? 'text-red-600'
+                    : feedback.kind === 'depth_confusion' ? 'text-amber-600'
+                    : 'text-green-600'
+                }`}>
+                  {feedback.isCorrect ? '✓' : feedback.kind === 'depth_confusion' ? '⚠' : '✗'}
+                </span>
+                {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+                    {ACTION_LABELS[feedback.selectedAction]} → {feedback.confusedWithSpot.effectiveStackBb}bb
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={pickNext}
+                className="w-full rounded-xl bg-gray-900 py-3.5 text-base font-bold text-white active:scale-95"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="mt-3 text-center text-xs text-gray-400">{sessionInfo}</div>
-
-      <Link to={category ? '/' : '/spots'} className="mt-2 block text-center text-sm text-gray-500 hover:text-gray-900">
-        ← End session
-      </Link>
+      {/* Bottom bar — live progress */}
+      <div className="flex items-center justify-between py-2">
+        <Link to={category ? '/' : '/spots'} className="text-xs text-gray-400">← End</Link>
+        <div className="flex gap-2 text-[10px]">
+          <span className="text-red-500">🔴 {problemCount}</span>
+          <span className="text-amber-500">🟡 {learningCount}</span>
+          <span className="text-green-500">🟢 {masteredCount}</span>
+        </div>
+      </div>
     </div>
   );
 }
 
-function filterTrainableCards(cards: TrainerCard[], includeTrashHandsInTraining: boolean): TrainerCard[] {
-  if (includeTrashHandsInTraining) return cards;
-  return cards.filter((card) => !isTrashHand(card));
+// --- Helpers ---
+
+function getBarPosition(freq: HandFrequencies, action: Action): number {
+  let position = 0;
+  for (const a of ACTIONS) {
+    if (freq[a] <= 0) continue;
+    if (a === action) return position + (freq[a] * 100) / 2;
+    position += freq[a] * 100;
+  }
+  return position;
 }
 
-function applyMixFocus(cards: TrainerCard[], focusOnMixedHands: boolean): TrainerCard[] {
-  if (!focusOnMixedHands) return cards;
-  const mixed = cards.filter((card) => countNonZeroActions(card) > 1);
-  return mixed.length > 0 ? mixed : cards;
-}
-
-function isTrashHand(card: TrainerCard): boolean {
-  return (
-    card.frequencies.fold === 1
-    && card.frequencies.call === 0
-    && card.frequencies.raise === 0
-    && card.frequencies.jam === 0
-  );
-}
-
-function countNonZeroActions(card: TrainerCard): number {
-  return Object.values(card.frequencies).reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
+function filterTrainableCards(cards: TrainerCard[], includeTrash: boolean): TrainerCard[] {
+  if (includeTrash) return cards;
+  return cards.filter((c) => !(c.frequencies.fold === 1 && c.frequencies.call === 0 && c.frequencies.raise === 0 && c.frequencies.jam === 0));
 }
 
 function getPrimaryAction(freq: HandFrequencies): Action {
-  return ACTIONS.reduce((best, action) => (freq[action] > freq[best] ? action : best), 'fold' as Action);
+  return ACTIONS.reduce((best, a) => (freq[a] > freq[best] ? a : best), 'fold' as Action);
 }
 
 function isMixAcceptable(tolerant: boolean, trueMix: boolean, selectedAction: Action, primaryAction: Action): boolean {
@@ -719,20 +600,19 @@ function classifyError(
   allRanges: Map<string, SpotRange>
 ): { type: 'wrong' | 'depth_confusion'; confusedWithSpot?: Spot } {
   const siblings = categorySpots
-    .filter((spot) => spot.id !== currentSpot.id && spot.effectiveStackBb !== currentSpot.effectiveStackBb)
-    .sort(
-      (a, b) =>
-        Math.abs(a.effectiveStackBb - currentSpot.effectiveStackBb)
-        - Math.abs(b.effectiveStackBb - currentSpot.effectiveStackBb)
+    .filter((s) => s.id !== currentSpot.id && s.effectiveStackBb !== currentSpot.effectiveStackBb)
+    .sort((a, b) =>
+      Math.abs(a.effectiveStackBb - currentSpot.effectiveStackBb)
+      - Math.abs(b.effectiveStackBb - currentSpot.effectiveStackBb)
     );
 
   for (const sibling of siblings) {
-    const siblingRange = allRanges.get(sibling.id);
-    if (!siblingRange) continue;
-    const siblingFreq = siblingRange[hand];
-    if (!siblingFreq) continue;
+    const range = allRanges.get(sibling.id);
+    if (!range) continue;
+    const freq = range[hand];
+    if (!freq) continue;
 
-    const siblingPrimary = getPrimaryAction(siblingFreq);
+    const siblingPrimary = getPrimaryAction(freq);
     const diff = Math.abs(sibling.effectiveStackBb - currentSpot.effectiveStackBb);
     if (siblingPrimary === selectedAction && diff <= MAX_DEPTH_DIFFERENCE_BB) {
       return { type: 'depth_confusion', confusedWithSpot: sibling };
@@ -740,49 +620,4 @@ function classifyError(
   }
 
   return { type: 'wrong' };
-}
-
-type RenderCard = {
-  rank: string;
-  suit: string;
-  backgroundClass: string;
-};
-
-const SUITS = [
-  { symbol: '♠', backgroundClass: 'bg-gray-900' },
-  { symbol: '♥', backgroundClass: 'bg-red-600' },
-  { symbol: '♦', backgroundClass: 'bg-blue-600' },
-  { symbol: '♣', backgroundClass: 'bg-green-700' },
-];
-
-function buildCards(hand?: string): RenderCard[] | null {
-  if (!hand || hand.length < 2) return null;
-
-  const [rankA, rankB, rawSuffix] = hand.toUpperCase().split('');
-  const suffix = rawSuffix ?? '';
-  const seed = hand.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
-  const firstSuitIndex = seed % SUITS.length;
-  let secondSuitIndex = firstSuitIndex;
-
-  if (rankA === rankB) {
-    secondSuitIndex = (firstSuitIndex + 1) % SUITS.length;
-  } else if (suffix !== 'S') {
-    secondSuitIndex = getOffSuitSecondIndex(firstSuitIndex, seed);
-  }
-
-  const firstSuit = SUITS[firstSuitIndex];
-  const secondSuit = SUITS[secondSuitIndex];
-
-  return [
-    { rank: rankA, suit: firstSuit.symbol, backgroundClass: firstSuit.backgroundClass },
-    { rank: rankB, suit: secondSuit.symbol, backgroundClass: secondSuit.backgroundClass },
-  ];
-}
-
-function getOffSuitSecondIndex(firstSuitIndex: number, seed: number): number {
-  let secondSuitIndex = (firstSuitIndex + 1 + (seed % (SUITS.length - 1))) % SUITS.length;
-  if (secondSuitIndex === firstSuitIndex) {
-    secondSuitIndex = (secondSuitIndex + 1) % SUITS.length;
-  }
-  return secondSuitIndex;
 }
