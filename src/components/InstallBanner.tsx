@@ -92,7 +92,7 @@ export function InstallBanner() {
         <div className="flex-1">
           <p className="font-semibold text-blue-900">Install App</p>
           <p className="text-blue-700 text-xs mt-0.5">
-            Add Spin &amp; Gold Trainer to your home screen for offline access and easy reopening.
+            Add Spin & Gold Trainer to your home screen for offline access and easy reopening.
           </p>
         </div>
         <button
