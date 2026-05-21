@@ -108,14 +108,14 @@ function DailyChart({ days }: { days: ForecastDay[] }) {
 }
 
 function CategoryRow({ cat }: { cat: CategoryForecast }) {
-  const healthClass = cat.dueToday <= 10
-    ? 'border-l-4 border-emerald-400'
+  const healthColorClass = cat.dueToday <= 10
+    ? 'border-emerald-400'
     : cat.dueToday <= 30
-      ? 'border-l-4 border-yellow-400'
-      : 'border-l-4 border-red-400';
+      ? 'border-yellow-400'
+      : 'border-red-400';
 
   return (
-    <Disclosure as="div" className={`rounded-lg border border-gray-200 bg-white shadow-sm ${healthClass}`}>
+    <Disclosure as="div" className={`rounded-lg border border-l-4 border-gray-200 bg-white shadow-sm ${healthColorClass}`}>
       {({ open }) => (
         <>
           <Disclosure.Button className="flex w-full items-center justify-between p-3 text-left">

@@ -74,7 +74,7 @@ export default function Settings() {
   const conflictWarnings = useMemo(() => {
     const warnings: string[] = [];
     if (settings.showMixButton && settings.mixStrategy === 'tolerant') {
-      warnings.push('Mix button is enabled, but tolerant strategy does not enforce exact mix frequencies.');
+      warnings.push('Mix button is enabled, but the tolerant strategy does not enforce exact mix frequencies.');
     }
     if (settings.focusOnMixedHands && settings.includeTrashHandsInTraining) {
       warnings.push('Focus on mixed hands conflicts with including trash hands in training.');

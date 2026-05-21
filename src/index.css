@@ -8,10 +8,7 @@ body {
 }
 
 @layer base {
-  button {
-    min-height: 44px;
-  }
-
+  button,
   input,
   select,
   textarea {
