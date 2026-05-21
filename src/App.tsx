@@ -13,6 +13,7 @@ import GlobalStats from '@/pages/GlobalStats';
 import StudyMode from '@/pages/StudyMode';
 import ImportExport from '@/pages/ImportExport';
 import Settings from '@/pages/Settings';
+import Forecast from '@/pages/Forecast';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
 
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/stats" element={<GlobalStats />} />
         <Route path="/import-export" element={<ImportExport />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/forecast" element={<Forecast />} />
       </Routes>
     </div>
   );
