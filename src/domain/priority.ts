@@ -6,7 +6,8 @@ const RECENT_SPOT_PENALTY = 0.4;
 const TOP_N_POOL = 12;
 
 // === Pool distribution ===
-export const RETRY_DELAY_CARDS = 4;
+export const RETRY_DELAY_REPEAT_STEPS_SEC = [180, 600] as const;
+const MIN_RETRY_DELAY_SEC = 1;
 export const REVIEW_SAMPLE_EVERY_N = 8;
 export const ERROR_RATE_PROBLEM_THRESHOLD = 0.4;
 export const ERROR_RATE_WINDOW = 10; // last N shown
@@ -165,4 +166,16 @@ export function pickNextCard(
   }
 
   return topN[0].card;
+}
+
+export function getRetryDelaySeconds(attempt: number, retryMinDelaySec: number): number {
+  if (attempt <= 1) return Math.max(MIN_RETRY_DELAY_SEC, retryMinDelaySec);
+  if (attempt === 2) return RETRY_DELAY_REPEAT_STEPS_SEC[0];
+  return RETRY_DELAY_REPEAT_STEPS_SEC[1];
+}
+
+export function isSpotOnCooldown(spotId: string, recentSpotIds: string[], sameSpotCooldown: number): boolean {
+  const lookback = Math.max(0, sameSpotCooldown - 1);
+  if (lookback === 0) return false;
+  return recentSpotIds.slice(-lookback).includes(spotId);
 }

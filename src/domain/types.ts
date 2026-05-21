@@ -59,6 +59,23 @@ export type SpotRange = Record<string, HandFrequencies>;
 // === Trainer Card ===
 export type CardPhase = 'new' | 'learning' | 'review' | 'mastered' | 'relearning';
 
+export type CardMemory = {
+  phase: CardPhase;
+  ease: number;
+  intervalDays: number;
+  repetitions: number;
+  dueAt?: number;
+  lapses: number;
+  learningStep: number;
+  consecutiveHardOnStep?: number;
+  stability: number;
+  difficulty: number;
+  reps: number;
+  state: number;
+  last_review?: number;
+  structuralDifficulty?: number;
+};
+
 export type TrainerCard = {
   id: string; // `${spotId}:${hand}`
   spotId: string;
@@ -73,16 +90,7 @@ export type TrainerCard = {
     lastSeenAt?: number;
     lastAnswerAt?: number;
   };
-  memory: {
-    phase: CardPhase;
-    ease: number;
-    intervalDays: number;
-    repetitions: number;
-    dueAt?: number;
-    lapses: number;
-    learningStep: number;
-    consecutiveHardOnStep?: number;
-  };
+  memory: CardMemory;
 };
 
 // === Session ===
