@@ -81,6 +81,7 @@ export type TrainerCard = {
     dueAt?: number;
     lapses: number;
     learningStep: number;
+    consecutiveHardOnStep?: number;
   };
 };
 

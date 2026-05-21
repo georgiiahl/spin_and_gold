@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fastResponseMs: 2000,
   slowResponseMs: 8000,
   showFrequenciesInFeedback: true,
-  includeTrashHandsInTraining: true,
+  includeTrashHandsInTraining: false,
   focusOnMixedHands: false,
   mixStrategy: 'strict',
   mixThreshold: 0.65,
