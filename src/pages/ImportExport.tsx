@@ -8,6 +8,7 @@ import { getAllRanges, getRange } from '@/storage/ranges';
 import { getAllSessions } from '@/storage/sessions';
 import { getAllSpots, getSpot } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
+import { AppSettings, loadSettings, SETTINGS_KEY } from '@/storage/settings';
 
 type FullExportPayload = {
   version: 1;
@@ -18,6 +19,7 @@ type FullExportPayload = {
     ranges: Array<{ spotId: string; range: SpotRange }>;
     cards: TrainerCard[];
     sessions: SessionAnswer[];
+    settings?: AppSettings;
   };
 };
 
@@ -63,6 +65,7 @@ export default function ImportExport() {
         ranges: allRanges,
         cards: allCards,
         sessions: allSessions,
+        settings: loadSettings(),
       },
     };
     downloadJson(`spin-gold-full-${Date.now()}.json`, payload);
@@ -102,6 +105,9 @@ export default function ImportExport() {
         const confirmed = confirm('Import full backup and replace current local data?');
         if (!confirmed) return;
         await replaceAllData(parsed.data.spots, parsed.data.ranges, parsed.data.cards, parsed.data.sessions);
+        if (parsed.data.settings) {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed.data.settings));
+        }
         setStatus(`Imported full backup: ${parsed.data.spots.length} spots.`);
       } else {
         validateRange(parsed.data.range);
