@@ -21,7 +21,7 @@ import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
 import SessionSummary from '@/components/SessionSummary';
 import { buildCategoryProgress } from '@/domain/progress';
-import { FeedbackKind, getFeedbackPanelClass, triggerFeedback } from '@/domain/feedback';
+import { FeedbackKind, triggerFeedback } from '@/domain/feedback';
 
 const ACTION_LABELS: Record<Action, string> = {
   fold: 'Fold',
@@ -30,10 +30,10 @@ const ACTION_LABELS: Record<Action, string> = {
   jam: 'Jam',
 };
 const ACTION_BUTTON_CLASSES: Record<Action, string> = {
-  fold: 'bg-fold',
-  call: 'bg-call',
-  raise: 'bg-raise',
-  jam: 'bg-jam',
+  fold: 'bg-gray-500 hover:bg-gray-400',
+  call: 'bg-green-600 hover:bg-green-500',
+  raise: 'bg-blue-600 hover:bg-blue-500',
+  jam: 'bg-red-600 hover:bg-red-500',
 };
 const ACTION_TEXT_CLASSES: Record<Action, string> = {
   fold: 'text-fold',
@@ -533,7 +533,7 @@ export default function Trainer() {
 
   if (sessionEnded) {
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col p-4">
+      <div className="mx-auto flex w-full max-w-md flex-col p-3 sm:p-4">
         <SessionSummary
           totalCardsReviewed={sessionAnswers.length}
           accuracyPercent={summaryAccuracy}
@@ -551,57 +551,59 @@ export default function Trainer() {
     );
   }
 
+  const displayCards = buildCards(currentCard?.hand);
+  const sessionInfo = settings.sessionMode === 'timed'
+    ? `${Math.ceil(timedRemainingMs / 1000)}s left`
+    : settings.sessionMode === 'cards'
+      ? `${sessionCount}/${settings.sessionCardLimit} cards`
+      : `Remaining: ${remainingDueIds.length}`;
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs text-gray-500">
+    <div className="mx-auto flex w-full max-w-md flex-col p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="truncate text-xs text-gray-400">
           {trainingCategoryLabel} · {currentSpot?.title}
           {fixMode && ' · Fix Mistakes'}
         </span>
-        <span className="text-xs text-gray-500">
+        <span className="shrink-0 text-xs text-gray-400">
           {correctCount}/{sessionCount}
           {sessionCount > 0 && ` (${Math.round((correctCount / sessionCount) * 100)}%)`}
         </span>
       </div>
-
-      <div className={`mb-3 text-center text-4xl font-extrabold ${depthHighlight ? 'animate-pulse-amber text-amber-600' : 'text-gray-900'}`}>
-        {currentSpot?.effectiveStackBb}bb
-      </div>
-
-      {settings.sessionMode === 'timed' && (
-        <div className="mb-3 text-center text-sm text-gray-600">
-          Time left: {Math.ceil(timedRemainingMs / 1000)}s
-        </div>
-      )}
-      {settings.sessionMode === 'cards' && (
-        <div className="mb-3 text-center text-sm text-gray-600">
-          Cards: {sessionCount}/{settings.sessionCardLimit}
-        </div>
-      )}
-      {settings.sessionMode === 'until_done' && (
-        <div className="mb-3 text-center text-sm text-gray-600">
-          Remaining: {remainingDueIds.length} card{remainingDueIds.length !== 1 ? 's' : ''}
-        </div>
-      )}
 
       <PokerTable
         format={currentSpot?.format ?? '3max'}
         actingPosition={currentSpot?.actingPosition ?? 'BTN'}
         history={currentSpot?.history ?? []}
         effectiveStackBb={currentSpot?.effectiveStackBb ?? 0}
-        hand={currentCard?.hand}
       />
 
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center">
+      <div className="mt-3 flex items-center justify-center gap-2">
+        {displayCards?.map((card, index) => (
+          <div
+            key={`${card.rank}${card.suit}-${index}`}
+            className={`flex h-20 w-14 flex-col items-center justify-center rounded-lg text-lg font-bold text-white shadow-sm ${card.backgroundClass}`}
+          >
+            <span className="leading-none">{card.rank}</span>
+            <span className="leading-none text-base">{card.suit}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className={`mt-3 text-center text-2xl font-semibold ${depthHighlight ? 'animate-pulse-amber text-amber-600' : 'text-gray-900'}`}>
+        {currentSpot?.effectiveStackBb}bb
+      </div>
+
+      <div className="mt-auto pt-3">
         {currentCard && !feedback && (
-          <div className="w-full max-w-xs">
-            <div className="mb-4 text-center text-sm text-gray-500">What's your action?</div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="w-full">
+            <div className="flex w-full gap-2">
               {visibleActions.map((action) => (
                 <button
                   key={action}
                   onClick={() => handleAnswer(action)}
-                  className={`rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
+                  aria-label={`${ACTION_LABELS[action]} action`}
+                  className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white transition-transform active:scale-95`}
                 >
                   {ACTION_LABELS[action]}
                 </button>
@@ -611,8 +613,8 @@ export default function Trainer() {
         )}
 
         {feedback && (
-          <div className="w-full max-w-xs text-center">
-            <div className={`mb-3 text-xl font-bold ${feedback.kind === 'wrong' ? 'text-red-600' : feedback.kind === 'depth_confusion' ? 'text-amber-600' : 'text-green-600'}`}>
+          <div className="w-full text-center" role="status" aria-live="polite">
+            <div className={`mb-2 text-xl font-bold ${feedback.kind === 'wrong' ? 'text-red-600' : feedback.kind === 'depth_confusion' ? 'text-amber-600' : 'text-green-600'}`}>
               {feedback.kind === 'mix_acceptable'
                 ? '~ Mix acceptable'
                 : feedback.kind === 'slow_correct'
@@ -625,39 +627,32 @@ export default function Trainer() {
             </div>
 
             {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
-              <div className="mb-3 inline-flex animate-pulse-amber rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700">
+              <div className="mb-2 inline-flex animate-pulse-amber rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
                 {ACTION_LABELS[feedback.selectedAction]} is correct at {feedback.confusedWithSpot.effectiveStackBb}bb
               </div>
             )}
 
-            <div className={`mb-4 rounded-2xl border p-4 text-left text-sm shadow-sm transition-colors duration-300 ${getFeedbackPanelClass(feedback.kind)}`}>
-              <div className="mb-2">
-                <span className="text-gray-500">You chose: </span>
-                <span className={`font-medium ${ACTION_TEXT_CLASSES[feedback.selectedAction]}`}>
-                  {ACTION_LABELS[feedback.selectedAction]}
-                </span>
-              </div>
-              <div className="mb-2">
+            <div className="mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-sm transition-colors duration-300">
+              <div className="mb-1">
                 <span className="text-gray-500">Primary: </span>
-                <span className="font-medium">{ACTION_LABELS[feedback.primaryAction]}</span>
+                <span className={`font-semibold ${ACTION_TEXT_CLASSES[feedback.primaryAction]}`}>{ACTION_LABELS[feedback.primaryAction]}</span>
               </div>
               {settings.showFrequenciesInFeedback && (
-                <div>
-                  <span className="text-gray-500">Frequencies: </span>
-                  <div className="mt-1">
-                    {ACTIONS.filter((action) => feedback.frequencies[action] > 0).map((action) => (
-                      <span key={action} className={`mr-2 inline-block ${ACTION_TEXT_CLASSES[action]}`}>
-                        {ACTION_LABELS[action]} {(feedback.frequencies[action] * 100).toFixed(0)}%
-                      </span>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                  <span className="text-gray-500">Freq:</span>
+                  {ACTIONS.filter((action) => feedback.frequencies[action] > 0).map((action) => (
+                    <span key={action} className={`${ACTION_TEXT_CLASSES[action]}`}>
+                      {ACTION_LABELS[action]} {(feedback.frequencies[action] * 100).toFixed(0)}%
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
 
             <button
               onClick={pickNext}
-              className="w-full rounded-xl bg-blue-600 py-4 text-lg font-bold text-white transition-transform hover:bg-blue-500 active:scale-95"
+              aria-label="Next action"
+              className="w-full rounded-xl bg-blue-600 py-4 text-base font-bold text-white transition-transform hover:bg-blue-500 active:scale-95"
             >
               {fixMode
                 ? pendingMistakeIds.length <= 1 && feedback.isCorrect
@@ -671,7 +666,9 @@ export default function Trainer() {
         )}
       </div>
 
-      <Link to={category ? '/' : '/spots'} className="mt-4 block text-center text-sm text-gray-500 hover:text-gray-900">
+      <div className="mt-3 text-center text-xs text-gray-400">{sessionInfo}</div>
+
+      <Link to={category ? '/' : '/spots'} className="mt-2 block text-center text-sm text-gray-500 hover:text-gray-900">
         ← End session
       </Link>
     </div>
@@ -739,4 +736,44 @@ function classifyError(
   }
 
   return { type: 'wrong' };
+}
+
+type RenderCard = {
+  rank: string;
+  suit: string;
+  backgroundClass: string;
+};
+
+const SUITS = [
+  { symbol: '♠', backgroundClass: 'bg-gray-900' },
+  { symbol: '♥', backgroundClass: 'bg-red-600' },
+  { symbol: '♦', backgroundClass: 'bg-blue-600' },
+  { symbol: '♣', backgroundClass: 'bg-green-700' },
+];
+
+function buildCards(hand?: string): RenderCard[] | null {
+  if (!hand || hand.length < 2) return null;
+
+  const [rankA, rankB, rawSuffix] = hand.toUpperCase().split('');
+  const suffix = rawSuffix ?? '';
+  const seed = hand.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+  const firstSuitIndex = seed % SUITS.length;
+  let secondSuitIndex = firstSuitIndex;
+
+  if (rankA === rankB) {
+    secondSuitIndex = (firstSuitIndex + 1) % SUITS.length;
+  } else if (suffix !== 'S') {
+    secondSuitIndex = (firstSuitIndex + 1 + (seed % (SUITS.length - 1))) % SUITS.length;
+    if (secondSuitIndex === firstSuitIndex) {
+      secondSuitIndex = (secondSuitIndex + 1) % SUITS.length;
+    }
+  }
+
+  const firstSuit = SUITS[firstSuitIndex];
+  const secondSuit = SUITS[secondSuitIndex];
+
+  return [
+    { rank: rankA, suit: firstSuit.symbol, backgroundClass: firstSuit.backgroundClass },
+    { rank: rankB, suit: secondSuit.symbol, backgroundClass: secondSuit.backgroundClass },
+  ];
 }
