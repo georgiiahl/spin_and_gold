@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllCards } from '@/storage/cards';
+import { getAllRanges } from '@/storage/ranges';
 import { getAllSpots } from '@/storage/spots';
 import { loadSettings } from '@/storage/settings';
-import { Spot, TrainerCard } from '@/domain/types';
+import { Spot, SpotRange, TrainerCard } from '@/domain/types';
 import {
   computeForecast,
   estimateBacklogDays,
@@ -198,21 +199,23 @@ function WorkloadEstimator({ forecast }: { forecast: OverallForecast }) {
 export default function Forecast() {
   const [cards, setCards] = useState<TrainerCard[]>([]);
   const [spots, setSpots] = useState<Spot[]>([]);
+  const [rangesBySpot, setRangesBySpot] = useState<Map<string, SpotRange>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const settings = useMemo(() => loadSettings(), []);
 
   useEffect(() => {
-    Promise.all([getAllCards(), getAllSpots()]).then(([loadedCards, loadedSpots]) => {
+    Promise.all([getAllCards(), getAllSpots(), getAllRanges()]).then(([loadedCards, loadedSpots, loadedRanges]) => {
       setCards(loadedCards);
       setSpots(loadedSpots);
+      setRangesBySpot(new Map(loadedRanges.map(({ spotId, range }) => [spotId, range])));
       setLoading(false);
     });
   }, []);
 
   const forecast = useMemo(
-    () => (loading ? null : computeForecast(cards, spots, settings)),
-    [cards, spots, settings, loading]
+    () => (loading ? null : computeForecast(cards, spots, settings, rangesBySpot)),
+    [cards, spots, settings, rangesBySpot, loading]
   );
 
   if (loading) {

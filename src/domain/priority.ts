@@ -1,14 +1,14 @@
 import { TrainerCard, HandFrequencies, SpotRange } from '@/domain/types';
 import { isBorderHand } from '@/domain/border';
+import { getFocusMixedPriorityMultiplier, getPureAction, isPureFold } from '@/domain/trainable';
 
 // === Tuned weights for infinite flow ===
 const RECENT_HAND_PENALTY = 0.05;
 const RECENT_SPOT_PENALTY = 0.4;
 const TOP_N_POOL = 12;
-const PURE_ACTION_SUPPRESSION = 0.3;
 const BOTTOM_MIX_BOOST = 1.4;
 const EVEN_MIX_BOOST = 1.2;
-const BORDER_HAND_BOOST = 1.3;
+const BORDER_FOLD_BOOST = 1.2;
 const FREQUENCY_EPSILON = 0.0001;
 
 // === Pool distribution ===
@@ -73,7 +73,8 @@ export function calculateMixedBoost(card: TrainerCard, focusMixed: boolean): num
   if (!focusMixed) return 1;
 
   const maxFreq = getMaxFrequency(card.frequencies);
-  if (Math.abs(maxFreq - 1.0) < FREQUENCY_EPSILON) return PURE_ACTION_SUPPRESSION;
+  // Pure actions are handled by getFocusMixedPriorityMultiplier in calculateTrashSuppression.
+  if (Math.abs(maxFreq - 1.0) < FREQUENCY_EPSILON) return 1;
   if (Math.abs(maxFreq - 0.75) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
   if (Math.abs(maxFreq - 0.5) < FREQUENCY_EPSILON) return EVEN_MIX_BOOST;
   if (Math.abs(maxFreq - 0.25) < FREQUENCY_EPSILON) return BOTTOM_MIX_BOOST;
@@ -86,13 +87,17 @@ export function calculatePriority(card: TrainerCard, focusMixed = false, range?:
   const urgency = calculateUrgency(card, now);
   const mistakeWeight = calculateMistakeWeight(card);
   const mixWeight = calculateMixWeight(card.frequencies);
-  const trashSuppression = calculateTrashSuppression(card);
+  const trashSuppression = calculateTrashSuppression(card, focusMixed, range);
   const novelty = calculateNovelty(card);
   const speedFactor = calculateSpeedFactor(card);
   const mixedBoost = calculateMixedBoost(card, focusMixed);
-  const borderBoost = range && isBorderHand(card.hand, range) ? BORDER_HAND_BOOST : 1;
+  const borderBoost = shouldApplyBorderFoldBoost(card, focusMixed, range) ? BORDER_FOLD_BOOST : 1;
 
   return urgency * mistakeWeight * mixWeight * trashSuppression * novelty * speedFactor * mixedBoost * borderBoost;
+}
+
+function shouldApplyBorderFoldBoost(card: TrainerCard, focusMixed: boolean, range?: SpotRange): boolean {
+  return !!(focusMixed && isPureFold(card.frequencies) && range && isBorderHand(card.hand, range));
 }
 
 function calculateUrgency(card: TrainerCard, now: number): number {
@@ -124,7 +129,9 @@ function calculateMixWeight(frequencies: HandFrequencies): number {
   return 1 + nonZero * 0.4;
 }
 
-function calculateTrashSuppression(card: TrainerCard): number {
+function calculateTrashSuppression(card: TrainerCard, focusMixed: boolean, range?: SpotRange): number {
+  if (focusMixed) return getFocusMixedPriorityMultiplier(card, range);
+
   const { frequencies } = card;
   const { streak, shown } = card.stats;
 
@@ -134,8 +141,8 @@ function calculateTrashSuppression(card: TrainerCard): number {
     if (shown >= 1 && streak >= 1) return 0.4;
   }
 
-  const maxFreq = Math.max(frequencies.fold, frequencies.call, frequencies.raise, frequencies.jam);
-  if (maxFreq === 1 && streak >= 5 && shown >= 5) return 0.2;
+  const pureAction = getPureAction(frequencies);
+  if (pureAction && streak >= 5 && shown >= 5) return 0.2;
 
   return 1;
 }

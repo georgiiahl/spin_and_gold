@@ -23,8 +23,8 @@ import {
   getRetryDelaySeconds,
   isSpotOnCooldown,
   REVIEW_SAMPLE_EVERY_N,
-  getMaxFrequency,
 } from '@/domain/priority';
+import { filterTrainableCards } from '@/domain/trainable';
 import { BalancedAnswer, scoreBalancedAnswer } from '@/domain/scoring';
 import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
@@ -265,8 +265,10 @@ export default function Trainer() {
 
     const trainable = filterTrainableCards(
       allCards,
-      settings.includeTrashHandsInTraining,
-      settings.focusOnMixedHands
+      {
+        includeTrashHandsInTraining: settings.includeTrashHandsInTraining,
+        focusOnMixedHands: settings.focusOnMixedHands,
+      }
     );
     const first = pickFromPools(trainable, 0);
     if (first) showCard(first);
@@ -402,8 +404,10 @@ export default function Trainer() {
 
     const trainable = filterTrainableCards(
       cards,
-      settings.includeTrashHandsInTraining,
-      settings.focusOnMixedHands
+      {
+        includeTrashHandsInTraining: settings.includeTrashHandsInTraining,
+        focusOnMixedHands: settings.focusOnMixedHands,
+      }
     );
     const next = pickFromPools(trainable, cardCountRef.current);
     if (next) {
@@ -859,15 +863,6 @@ function getBarPosition(freq: HandFrequencies, action: Action): number {
     position += freq[a] * 100;
   }
   return position;
-}
-
-function filterTrainableCards(cards: TrainerCard[], includeTrash: boolean, focusMixed: boolean): TrainerCard[] {
-  if (includeTrash) return cards;
-  return cards.filter((card) => {
-    const maxFreq = getMaxFrequency(card.frequencies);
-    if (focusMixed) return maxFreq !== 1;
-    return !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0);
-  });
 }
 
 function getPrimaryAction(freq: HandFrequencies): Action {
