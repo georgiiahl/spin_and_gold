@@ -1,5 +1,6 @@
-import { TrainerCard, Spot, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
+import { TrainerCard, Spot, SpotRange, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
 import { classifyCardPool } from '@/domain/priority';
+import { TrainableSettings, filterTrainableCards, getFocusMixedPriorityMultiplier } from '@/domain/trainable';
 
 export type ForecastDay = {
   date: string; // YYYY-MM-DD
@@ -58,19 +59,28 @@ function cardPoolToKey(card: TrainerCard): 'problem' | 'learning' | 'review' | '
 /**
  * Estimate how many reviews per day are expected from a set of cards.
  */
-export function estimatedDailyLoadForCategory(cards: TrainerCard[]): number {
+export function estimatedDailyLoadForCategory(
+  cards: TrainerCard[],
+  options: {
+    settings?: TrainableSettings;
+    rangesBySpot?: Map<string, SpotRange>;
+  } = {}
+): number {
   let load = 0;
   for (const card of cards) {
+    const multiplier = options.settings?.focusOnMixedHands
+      ? getFocusMixedPriorityMultiplier(card, options.rangesBySpot?.get(card.spotId))
+      : 1;
     const pool = cardPoolToKey(card);
     if (pool === 'review' || pool === 'mastered') {
       const interval = card.memory.intervalDays > 0 ? card.memory.intervalDays : 1;
-      load += 1 / interval;
+      load += (1 / interval) * multiplier;
     } else if (pool === 'learning') {
       // Learning cards typically see ~3 reviews per day (short-interval steps)
-      load += 3;
+      load += 3 * multiplier;
     } else if (pool === 'problem') {
       // Problem cards are shown more aggressively, ~5 reviews per day
-      load += 5;
+      load += 5 * multiplier;
     }
     // new cards don't contribute to daily review load estimate
   }
@@ -97,14 +107,13 @@ export function estimateBacklogDays(
 export function computeForecast(
   cards: TrainerCard[],
   spots: Spot[],
-  settings: { includeTrashHandsInTraining: boolean; focusOnMixedHands: boolean }
+  settings: TrainableSettings,
+  rangesBySpot?: Map<string, SpotRange>
 ): OverallForecast {
   const now = Date.now();
 
   // Filter active cards (based on settings)
-  const activeCards = settings.includeTrashHandsInTraining
-    ? cards
-    : cards.filter((card) => !(card.frequencies.fold === 1 && card.frequencies.call === 0 && card.frequencies.raise === 0 && card.frequencies.jam === 0));
+  const activeCards = filterTrainableCards(cards, settings);
 
   // Pool classification
   const poolDistribution: Record<'problem' | 'learning' | 'review' | 'new' | 'mastered', number> = {
@@ -227,14 +236,14 @@ export function computeForecast(
       dueToday: catDueToday,
       dueThisWeek: catDueThisWeek,
       poolDistribution: catPoolDist,
-      estimatedDailyLoad: estimatedDailyLoadForCategory(catCards),
+      estimatedDailyLoad: estimatedDailyLoadForCategory(catCards, { settings, rangesBySpot }),
     });
   }
 
   categories.sort((a, b) => b.dueToday - a.dueToday || a.categoryName.localeCompare(b.categoryName));
 
   // Backlog estimate
-  const estimatedDailyDue = estimatedDailyLoadForCategory(activeCards);
+  const estimatedDailyDue = estimatedDailyLoadForCategory(activeCards, { settings, rangesBySpot });
   const currentBacklog = dueToday;
   const dailyGrowthRate = estimatedDailyDue;
 
