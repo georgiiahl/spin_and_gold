@@ -14,6 +14,7 @@ import StudyMode from '@/pages/StudyMode';
 import ImportExport from '@/pages/ImportExport';
 import Settings from '@/pages/Settings';
 import Forecast from '@/pages/Forecast';
+import ReviewPage from '@/pages/ReviewPage';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/visual/border/:id" element={<BorderTrainer />} />
             <Route path="/stats" element={<GlobalStats />} />
             <Route path="/import-export" element={<ImportExport />} />
+            <Route path="/review" element={<ReviewPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/forecast" element={<Forecast />} />
             <Route path="*" element={<Navigate to="/" replace />} />
