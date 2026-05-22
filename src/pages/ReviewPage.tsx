@@ -1,25 +1,26 @@
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from 'react';
 import ReviewHand from '@/components/ReviewHand';
 import ReviewSummary, { ReviewSummaryItem } from '@/components/ReviewSummary';
-import { ParsedHand, parseGgHandHistories } from '@/domain/hhParser';
+import { parseGgHandHistories } from '@/domain/hhParser';
 import { buildHandVerdict } from '@/domain/hhReview';
 import { MatchedSpot, matchHandToSpot } from '@/domain/hhSpotMatcher';
 import { Spot, SpotRange } from '@/domain/types';
-import { buildStoredHandId, clearStoredHands, getStoredHands, saveImportedHands } from '@/storage/hhStore';
+import { StoredHandHistory, clearStoredHands, getStoredHands, saveImportedHands } from '@/storage/hhStore';
 import { getAllRanges } from '@/storage/ranges';
 import { getAllSpots } from '@/storage/spots';
 
 type ReviewMode = 'list' | 'review' | 'summary';
 
 type ReviewReadyHand = {
-  parsed: ParsedHand;
+  recordId: string;
+  parsed: StoredHandHistory['hand'];
   matched: MatchedSpot;
 };
 
 export default function ReviewPage() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [rangesBySpot, setRangesBySpot] = useState<Map<string, SpotRange>>(new Map());
-  const [hands, setHands] = useState<ParsedHand[]>([]);
+  const [storedHands, setStoredHands] = useState<StoredHandHistory[]>([]);
   const [status, setStatus] = useState('');
   const [mode, setMode] = useState<ReviewMode>('list');
   const [index, setIndex] = useState(0);
@@ -33,13 +34,17 @@ export default function ReviewPage() {
     Promise.all([getAllSpots(), getAllRanges(), getStoredHands()]).then(([loadedSpots, loadedRanges, storedHands]) => {
       setSpots(loadedSpots);
       setRangesBySpot(new Map(loadedRanges.map((entry) => [entry.spotId, entry.range])));
-      setHands(storedHands.map((entry) => entry.hand));
+      setStoredHands(storedHands);
     });
   }, []);
 
   const matchedHands = useMemo<ReviewReadyHand[]>(
-    () => hands.map((hand) => ({ parsed: hand, matched: matchHandToSpot(hand, spots) })),
-    [hands, spots]
+    () => storedHands.map((entry) => ({
+      recordId: entry.id,
+      parsed: entry.hand,
+      matched: matchHandToSpot(entry.hand, spots),
+    })),
+    [storedHands, spots]
   );
 
   const filteredHands = useMemo(
@@ -73,7 +78,7 @@ export default function ReviewPage() {
     }
 
     const stored = await getStoredHands();
-    setHands(stored.map((entry) => entry.hand));
+    setStoredHands(stored);
     setStatus(imported > 0 ? `Imported ${imported} hand(s).` : 'No valid hands found.');
   }
 
@@ -106,7 +111,7 @@ export default function ReviewPage() {
 
   async function handleClearImported() {
     await clearStoredHands();
-    setHands([]);
+    setStoredHands([]);
     setStatus('Imported hands cleared.');
     setMode('list');
     setIndex(0);
@@ -205,8 +210,8 @@ export default function ReviewPage() {
           <p className="text-sm text-gray-500">No hands to review yet.</p>
         ) : (
           <div className="max-h-72 space-y-2 overflow-auto">
-            {filteredHands.map(({ parsed, matched }) => (
-              <div key={buildStoredHandId(parsed, 'review-list')} className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+            {filteredHands.map(({ recordId, parsed, matched }) => (
+              <div key={recordId} className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
                 <div>#{parsed.handId} · {matched.actingPosition} · {matched.spotType} · {matched.effectiveStackBb}bb</div>
                 <div className="text-xs text-gray-500">
                   {matched.matchedSpotId ? `Matched spot: ${matched.matchedSpotId}` : 'No matching spot'}

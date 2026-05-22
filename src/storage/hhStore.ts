@@ -11,9 +11,7 @@ export type StoredHandHistory = {
 export function buildStoredHandId(hand: ParsedHand, sourceFile: string): string {
   const tournamentPart = hand.tournamentId || sourceFile;
   const timestampPart = hand.timestamp || 'no-ts';
-  const heroCardsPart = hand.heroCards?.join('-') || 'no-cards';
-  const heroActionPart = hand.heroAction?.action || 'no-action';
-  return `${tournamentPart}:${hand.handId}:${timestampPart}:${heroCardsPart}:${heroActionPart}`;
+  return `${tournamentPart}:${hand.handId}:${timestampPart}`;
 }
 
 export async function saveImportedHands(sourceFile: string, hands: ParsedHand[]): Promise<void> {

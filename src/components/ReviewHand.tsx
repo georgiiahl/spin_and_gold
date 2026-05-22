@@ -30,9 +30,14 @@ export default function ReviewHand({ matched, verdict, onNext }: Props) {
   const [retryError, setRetryError] = useState<string | null>(null);
   const [pickedRetryAction, setPickedRetryAction] = useState<Action | null>(null);
   const hand = matched.hand;
-  const heroName = hand.seats.find((seat) => seat.isHero)?.name ?? 'Hero';
-  const heroActionIndex = hand.preflopActions.findIndex((action) => action.player === heroName);
-  const preHeroActions = heroActionIndex >= 0 ? hand.preflopActions.slice(0, heroActionIndex) : hand.preflopActions;
+  const heroName = useMemo(
+    () => hand.seats.find((seat) => seat.isHero)?.name ?? 'Hero',
+    [hand.seats]
+  );
+  const preHeroActions = useMemo(() => {
+    const heroActionIndex = hand.preflopActions.findIndex((action) => action.player === heroName);
+    return heroActionIndex >= 0 ? hand.preflopActions.slice(0, heroActionIndex) : hand.preflopActions;
+  }, [hand.preflopActions, heroName]);
 
   const canProceed = !verdict || verdict.isCorrect || retryComplete;
   const heroCardsText = hand.heroCards ? hand.heroCards.join(' ') : 'N/A';

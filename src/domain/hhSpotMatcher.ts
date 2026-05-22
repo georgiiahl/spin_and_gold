@@ -139,5 +139,7 @@ function isSameHistoryPattern(left: HistoryEntry[], right: HistoryEntry[]): bool
 }
 
 function roundStack(value: number): number {
+  // Keep one decimal so 7.5bb-style stacks map consistently while still
+  // matching nearest stored discrete stack buckets.
   return Math.round(value * 10) / 10;
 }
