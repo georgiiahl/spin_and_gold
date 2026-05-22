@@ -93,7 +93,7 @@ export default function ReviewHand({ matched, verdict, onNext }: Props) {
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-700">
             {preHeroActions.map((action, index) => (
               <li key={`${action.player}-${index}`}>
-                {action.position ? `${action.position} ` : ''}{action.player}: {action.action}{action.amount != null ? ` ${action.amount}` : ''}
+                {formatAction(action)}
               </li>
             ))}
           </ol>
@@ -161,3 +161,8 @@ export default function ReviewHand({ matched, verdict, onNext }: Props) {
     </div>
   );
 }
+  function formatAction(action: { position: string; player: string; action: string; amount?: number }) {
+    const prefix = action.position ? `${action.position} ` : '';
+    const amount = action.amount != null ? ` ${action.amount}` : '';
+    return `${prefix}${action.player}: ${action.action}${amount}`;
+  }

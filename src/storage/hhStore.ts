@@ -8,9 +8,10 @@ export type StoredHandHistory = {
   importedAt: number;
 };
 
-function buildRecordId(hand: ParsedHand): string {
-  const tournamentPart = hand.tournamentId || 'unknown';
-  return `${tournamentPart}:${hand.handId}`;
+function buildRecordId(hand: ParsedHand, sourceFile: string): string {
+  const tournamentPart = hand.tournamentId || sourceFile;
+  const timestampPart = hand.timestamp || 'no-ts';
+  return `${tournamentPart}:${hand.handId}:${timestampPart}`;
 }
 
 export async function saveImportedHands(sourceFile: string, hands: ParsedHand[]): Promise<void> {
@@ -21,7 +22,7 @@ export async function saveImportedHands(sourceFile: string, hands: ParsedHand[])
 
   for (const hand of hands) {
     await tx.store.put({
-      id: buildRecordId(hand),
+      id: buildRecordId(hand, sourceFile),
       hand,
       sourceFile,
       importedAt: now,

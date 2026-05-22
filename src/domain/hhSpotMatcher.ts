@@ -43,16 +43,24 @@ function getActionsBeforeHero(hand: ParsedHand): ActionBeforeHero[] {
 function buildHistory(actionsBeforeHero: ActionBeforeHero[]): HistoryEntry[] {
   let hasAggressiveAction = false;
   return actionsBeforeHero.map((action) => {
+    const historyAction = determineHistoryAction(action.action, hasAggressiveAction);
     const isAggressive = action.action === 'raise' || action.action === 'jam';
-    const historyAction = isAggressive && !hasAggressiveAction && action.action === 'raise'
-      ? 'open'
-      : action.action;
     if (isAggressive) hasAggressiveAction = true;
     return {
       position: action.position,
       action: historyAction,
     };
   });
+}
+
+function determineHistoryAction(
+  action: ActionBeforeHero['action'],
+  hasAggressiveAction: boolean
+): HistoryEntry['action'] {
+  if (action === 'raise' && !hasAggressiveAction) {
+    return 'open';
+  }
+  return action;
 }
 
 function detectSpotType(actionsBeforeHero: ActionBeforeHero[]): MatchedSpot['spotType'] {

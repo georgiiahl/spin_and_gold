@@ -58,7 +58,7 @@ function parseSingleHand(handText: string): ParsedHand | null {
   const format: ParsedHand['format'] = seats.length === 2 ? 'hu' : '3max';
   const positionsBySeat = buildSeatPositionMap(seats.map((seat) => seat.seat), buttonSeat);
 
-  const dealt = handText.match(/^Dealt to (.+?) \[([2-9TJQKA][shdc]) ([2-9TJQKA][shdc])\]/im);
+  const dealt = handText.match(/^Dealt to (.+?) \[([2-9TJQKA][shdcSHDC]) ([2-9TJQKA][shdcSHDC])\]/im);
   const heroName = dealt?.[1]?.trim() ?? '';
   const heroCards = dealt ? [dealt[2].toUpperCase(), dealt[3].toUpperCase()] as [string, string] : null;
 
