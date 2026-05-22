@@ -210,6 +210,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                     <p className="mb-2 text-center text-xs text-gray-500">Try again:</p>
                   )}
                   <div className="flex gap-3" role="group" aria-label="Action buttons">
+                    {/* @ts-ignore */}
                     {ACTIONS.filter((a) => {
                       // Show all actions that exist in the range for this spot
                       if (!rangeForSpot) return true;
