@@ -196,6 +196,13 @@ export default function Dashboard() {
           <div className="font-semibold">Import / Export</div>
           <div className="text-sm text-gray-500">Backup and restore your data</div>
         </Link>
+        <Link
+          to="/review"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+        >
+          <div className="font-semibold">Review Mode</div>
+          <div className="text-sm text-gray-500">Import hand history and review decisions</div>
+        </Link>
       </div>
     </div>
   );
