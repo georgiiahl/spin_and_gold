@@ -19,6 +19,12 @@ type Props = {
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 
+function formatAction(action: MatchedSpot['hand']['preflopActions'][number]) {
+  const prefix = action.position ? `${action.position} ` : '';
+  const amount = action.amount != null ? ` ${action.amount}` : '';
+  return `${prefix}${action.player}: ${action.action}${amount}`;
+}
+
 export default function ReviewHand({ matched, verdict, onNext }: Props) {
   const [retryComplete, setRetryComplete] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -161,8 +167,3 @@ export default function ReviewHand({ matched, verdict, onNext }: Props) {
     </div>
   );
 }
-  function formatAction(action: { position: string; player: string; action: string; amount?: number }) {
-    const prefix = action.position ? `${action.position} ` : '';
-    const amount = action.amount != null ? ` ${action.amount}` : '';
-    return `${prefix}${action.player}: ${action.action}${amount}`;
-  }
