@@ -1,81 +1,101 @@
-import { useMemo, useState } from 'react';
-
-export type ReviewSummaryItem = {
-  handId: string;
-  matchedSpotId: string | null;
-  hadChart: boolean;
-  isCorrect: boolean;
-  errorType: 'wrong_action' | null;
-};
+import { useMemo } from 'react';
+import { Action } from '@/domain/types';
+import { ReviewHandResult } from '@/components/ReviewHand';
 
 type Props = {
-  items: ReviewSummaryItem[];
+  items: ReviewHandResult[];
   onRestart: () => void;
 };
 
-export default function ReviewSummary({ items, onRestart }: Props) {
-  const [selectedHandId, setSelectedHandId] = useState<string | null>(null);
+const ACTION_LABELS: Record<Action, string> = {
+  fold: 'Fold',
+  call: 'Call',
+  raise: 'Raise',
+  jam: 'Jam',
+};
 
+export default function ReviewSummary({ items, onRestart }: Props) {
   const scored = items.filter((item) => item.hadChart);
   const correct = scored.filter((item) => item.isCorrect).length;
-  const wrong = scored.filter((item) => !item.isCorrect).length;
+  const total = scored.length;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const noChart = items.length - scored.length;
 
   const errors = useMemo(
-    () => items.filter((item) => item.errorType !== null),
-    [items]
+    () => scored.filter((item) => !item.isCorrect),
+    [scored]
   );
-  const selected = errors.find((item) => item.handId === selectedHandId) ?? null;
+
+  const gradeColor = accuracy >= 80 ? 'text-green-600' : accuracy >= 50 ? 'text-amber-600' : 'text-red-600';
+  const gradeLabel = accuracy >= 80 ? 'Great' : accuracy >= 50 ? 'Okay' : 'Needs work';
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4">
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Review Summary</h2>
-        <p className="mt-2 text-sm text-gray-700">
-          Score: <span className="font-semibold">{correct}/{scored.length}</span>
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
-        <h3 className="font-semibold">Error breakdown</h3>
-        <div className="mt-2 space-y-1 text-gray-700">
-          <p>Wrong action: {wrong}</p>
-          <p>No chart available: {noChart}</p>
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col items-center justify-center pb-[env(safe-area-inset-bottom)]">
+      {/* Score circle */}
+      <div className="flex flex-col items-center gap-2">
+        <div className={`text-5xl font-bold ${gradeColor}`}>
+          {accuracy}%
+        </div>
+        <div className={`text-sm font-semibold ${gradeColor}`}>{gradeLabel}</div>
+        <div className="text-xs text-gray-500">
+          {correct}/{total} correct · {noChart} skipped (no chart)
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h3 className="font-semibold">Errors</h3>
-        {errors.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">No errors.</p>
-        ) : (
-          <div className="mt-2 space-y-2">
+      {/* Error list */}
+      {errors.length > 0 && (
+        <div className="mt-6 w-full rounded-xl border border-gray-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Mistakes ({errors.length})</h3>
+          <div className="max-h-60 space-y-2 overflow-auto">
             {errors.map((item) => (
-              <button
+              <div
                 key={item.handId}
-                type="button"
-                onClick={() => setSelectedHandId(item.handId)}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-700"
+                className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm"
               >
-                Hand #{item.handId} · {item.errorType}
-              </button>
+                <span className="text-gray-700">#{item.handId}</span>
+                <div className="flex items-center gap-2 text-xs">
+                  {item.selectedAction && (
+                    <span className="text-red-600 font-medium">
+                      {ACTION_LABELS[item.selectedAction]}
+                    </span>
+                  )}
+                  {item.heroAction && item.heroAction !== item.selectedAction && (
+                    <span className="text-gray-400">
+                      (played {ACTION_LABELS[item.heroAction]})
+                    </span>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
-        )}
-        {selected && (
-          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            Hand #{selected.handId} · {selected.errorType}
-            {selected.matchedSpotId ? ` · Spot ${selected.matchedSpotId}` : ''}
+        </div>
+      )}
+
+      {/* Stats breakdown */}
+      <div className="mt-4 w-full rounded-xl border border-gray-200 bg-white p-4">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-lg font-bold text-green-600">{correct}</div>
+            <div className="text-[10px] text-gray-500">Correct</div>
           </div>
-        )}
+          <div>
+            <div className="text-lg font-bold text-red-600">{errors.length}</div>
+            <div className="text-[10px] text-gray-500">Wrong</div>
+          </div>
+          <div>
+            <div className="text-lg font-bold text-gray-400">{noChart}</div>
+            <div className="text-[10px] text-gray-500">No chart</div>
+          </div>
+        </div>
       </div>
 
+      {/* Restart */}
       <button
         type="button"
         onClick={onRestart}
-        className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+        className="mt-6 w-full rounded-xl bg-gray-900 py-3.5 text-base font-bold text-white active:scale-95"
       >
-        Start new review
+        New Review
       </button>
     </div>
   );

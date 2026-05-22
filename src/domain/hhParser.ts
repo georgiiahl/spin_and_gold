@@ -32,9 +32,11 @@ type ParsedAction = {
   amount?: number;
 };
 
-// GG exports in this app are expected to have each new hand block start with
-// "Hand #..." (sometimes prefixed by "GGPoker") and separated by blank lines.
-const HAND_SPLIT_REGEX = /\n{2,}(?=(?:GGPoker\s+)?Hand\s+#\d+)/g;
+// Supports both formats:
+//   "Poker Hand #SG3893499366: Tournament #286662086, Spin&Gold ..."
+//   "GGPoker Hand #12345 ..."
+//   "Hand #12345 ..."
+const HAND_SPLIT_REGEX = /\n{2,}(?=(?:Poker|GGPoker)?\s*Hand\s+#)/g;
 
 export function parseGgHandHistories(rawText: string): ParsedHand[] {
   const text = rawText.replace(/\r/g, '').trim();
@@ -49,7 +51,8 @@ export function parseGgHandHistories(rawText: string): ParsedHand[] {
 }
 
 function parseSingleHand(handText: string): ParsedHand | null {
-  const handId = handText.match(/Hand\s+#(\d+)/)?.[1];
+  // Match alphanumeric hand IDs like SG3893499366 or numeric like 12345
+  const handId = handText.match(/Hand\s+#([A-Za-z0-9]+)/)?.[1];
   if (!handId) return null;
 
   const tournamentId = handText.match(/Tournament\s+#(\d+)/)?.[1] ?? '';
@@ -79,8 +82,11 @@ function parseSingleHand(handText: string): ParsedHand | null {
 
   if (parsedSeats.length < 2) return null;
 
-  const sbAmount = extractBlindAmount(handText, /^(.*?): posts small blind (\d+(?:\.\d+)?)/im);
-  const bbAmount = extractBlindAmount(handText, /^(.*?): posts big blind (\d+(?:\.\d+)?)/im);
+  // Prefer extracting blinds from the header "Level5(40/80)" since posted
+  // amounts can be less when a player is short-stacked.
+  const { sb: headerSb, bb: headerBb } = extractBlindsFromHeader(handText);
+  const sbAmount = headerSb > 0 ? headerSb : extractBlindAmount(handText, /^(.*?): posts small blind (\d+(?:\.\d+)?)/im);
+  const bbAmount = headerBb > 0 ? headerBb : extractBlindAmount(handText, /^(.*?): posts big blind (\d+(?:\.\d+)?)/im);
   if (bbAmount <= 0) return null;
 
   const preflopLines = extractPreflopLines(handText);
@@ -153,6 +159,17 @@ function buildSeatPositionMap(
   map.set(nextSeat, 'SB');
   map.set(thirdSeat, 'BB');
   return map;
+}
+
+/**
+ * Extract blind levels from the header line, e.g.:
+ *   "Level5(40/80)" → { sb: 40, bb: 80 }
+ * This is more reliable than parsing posted amounts which can be short.
+ */
+function extractBlindsFromHeader(handText: string): { sb: number; bb: number } {
+  const match = handText.match(/Level\d+\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\)/i);
+  if (!match) return { sb: 0, bb: 0 };
+  return { sb: Number(match[1]), bb: Number(match[2]) };
 }
 
 function extractBlindAmount(handText: string, regex: RegExp): number {

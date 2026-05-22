@@ -1,6 +1,6 @@
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from 'react';
-import ReviewHand from '@/components/ReviewHand';
-import ReviewSummary, { ReviewSummaryItem } from '@/components/ReviewSummary';
+import ReviewHand, { ReviewHandResult } from '@/components/ReviewHand';
+import ReviewSummary from '@/components/ReviewSummary';
 import { parseGgHandHistories } from '@/domain/hhParser';
 import { buildHandVerdict } from '@/domain/hhReview';
 import { MatchedSpot, matchHandToSpot } from '@/domain/hhSpotMatcher';
@@ -24,7 +24,7 @@ export default function ReviewPage() {
   const [status, setStatus] = useState('');
   const [mode, setMode] = useState<ReviewMode>('list');
   const [index, setIndex] = useState(0);
-  const [results, setResults] = useState<ReviewSummaryItem[]>([]);
+  const [results, setResults] = useState<ReviewHandResult[]>([]);
 
   const [positionFilter, setPositionFilter] = useState<'all' | 'BTN' | 'SB' | 'BB'>('all');
   const [spotTypeFilter, setSpotTypeFilter] = useState<'all' | 'open' | 'vs_open' | 'vs_3bet' | 'vs_jam'>('all');
@@ -60,6 +60,10 @@ export default function ReviewPage() {
   const current = filteredHands[index] ?? null;
   const currentVerdict = useMemo(
     () => (current ? buildHandVerdict(current.matched, rangesBySpot) : null),
+    [current, rangesBySpot]
+  );
+  const currentRange = useMemo(
+    () => (current?.matched.matchedSpotId ? rangesBySpot.get(current.matched.matchedSpotId) : undefined),
     [current, rangesBySpot]
   );
 
@@ -98,7 +102,7 @@ export default function ReviewPage() {
     setMode('review');
   }
 
-  function handleNext(result: ReviewSummaryItem) {
+  function handleNext(result: ReviewHandResult) {
     const nextResults = [...results, result];
     setResults(nextResults);
     const nextIndex = index + 1;
@@ -125,8 +129,12 @@ export default function ReviewPage() {
   if (mode === 'review' && current) {
     return (
       <ReviewHand
+        key={current.recordId}
         matched={current.matched}
         verdict={currentVerdict}
+        rangeForSpot={currentRange}
+        index={index}
+        total={filteredHands.length}
         onNext={handleNext}
       />
     );
@@ -137,7 +145,7 @@ export default function ReviewPage() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <h1 className="text-xl font-bold">Review Mode</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Import GG Poker hand history .txt files and review preflop decisions.
+          Import hand history .txt files and review your preflop decisions.
         </p>
       </div>
 
