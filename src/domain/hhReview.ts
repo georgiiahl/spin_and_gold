@@ -29,9 +29,9 @@ export function buildHandVerdict(
   const correctActions = ACTIONS.filter((action) => frequencies[action] > 0);
   if (correctActions.length === 0) return null;
 
-  const primaryAction = ACTIONS.reduce((best, action) => (
+  const primaryAction = correctActions.reduce((best, action) => (
     frequencies[action] > frequencies[best] ? action : best
-  ), 'fold' as Action);
+  ), correctActions[0]);
 
   const isCorrect = correctActions.includes(heroAction);
   const isMixedCorrect = isCorrect && heroAction !== primaryAction && correctActions.length > 1;

@@ -32,6 +32,8 @@ type ParsedAction = {
   amount?: number;
 };
 
+// GG exports in this app are expected to have each new hand block start with
+// "Hand #..." (sometimes prefixed by "GGPoker") and separated by blank lines.
 const HAND_SPLIT_REGEX = /\n{2,}(?=(?:GGPoker\s+)?Hand\s+#\d+)/g;
 
 export function parseGgHandHistories(rawText: string): ParsedHand[] {

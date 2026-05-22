@@ -5,7 +5,7 @@ import { ParsedHand, parseGgHandHistories } from '@/domain/hhParser';
 import { buildHandVerdict } from '@/domain/hhReview';
 import { MatchedSpot, matchHandToSpot } from '@/domain/hhSpotMatcher';
 import { Spot, SpotRange } from '@/domain/types';
-import { clearStoredHands, getStoredHands, saveImportedHands } from '@/storage/hhStore';
+import { buildStoredHandId, clearStoredHands, getStoredHands, saveImportedHands } from '@/storage/hhStore';
 import { getAllRanges } from '@/storage/ranges';
 import { getAllSpots } from '@/storage/spots';
 
@@ -206,7 +206,7 @@ export default function ReviewPage() {
         ) : (
           <div className="max-h-72 space-y-2 overflow-auto">
             {filteredHands.map(({ parsed, matched }) => (
-              <div key={`${parsed.tournamentId || 'unknown'}-${parsed.handId}-${parsed.timestamp || 'no-ts'}`} className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+              <div key={buildStoredHandId(parsed, 'review-list')} className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
                 <div>#{parsed.handId} · {matched.actingPosition} · {matched.spotType} · {matched.effectiveStackBb}bb</div>
                 <div className="text-xs text-gray-500">
                   {matched.matchedSpotId ? `Matched spot: ${matched.matchedSpotId}` : 'No matching spot'}
