@@ -51,6 +51,7 @@ export default function ChipEvStats() {
 
   const chartPoints = useMemo(() => buildGraphPoints(filteredResults, graphMode), [filteredResults, graphMode]);
   const positionBreakdown = useMemo(() => buildPositionBreakdown(filteredResults), [filteredResults]);
+  const lastPoint = chartPoints[chartPoints.length - 1];
 
   async function refreshResults(nextStatus?: string) {
     const stored = await getStoredChipEvHands();
@@ -193,8 +194,8 @@ export default function ChipEvStats() {
           <div className="space-y-4">
             <LineChart points={chartPoints} />
             <div className="grid gap-2 text-sm text-gray-600 sm:grid-cols-3">
-              <div>Last cumulative chips: {formatSigned(chartPoints[chartPoints.length - 1]?.cumulativeChips ?? 0)}</div>
-              <div>Last cEV/t: {formatSigned(chartPoints[chartPoints.length - 1]?.cevPerTournament ?? 0)}</div>
+              <div>Last cumulative chips: {formatSigned(lastPoint?.cumulativeChips ?? 0)}</div>
+              <div>Last cEV/t: {formatSigned(lastPoint?.cevPerTournament ?? 0)}</div>
               <div>Mode: {graphMode === 'tournament' ? 'Tournament' : 'Import session'}</div>
             </div>
           </div>
@@ -329,13 +330,12 @@ function buildPositionBreakdown(results: StoredChipEvHandResult[]) {
   return (['BTN', 'SB', 'BB'] as const).map((position) => {
     const items = results.filter((result) => result.heroPosition === position);
     const summary = summarizeChipEv(items);
-    const totalBb = items.reduce((sum, item) => sum + (item.bbSize > 0 ? item.netChipsAdjusted / item.bbSize : 0), 0);
     return {
       position,
       hands: items.length,
       tournaments: summary.totalTournaments,
       chipEvPerTournament: summary.chipEvPerTournament,
-      bbPer100: items.length > 0 ? roundNumber((totalBb / items.length) * 100) : 0,
+      bbPer100: calculateBbPer100(items),
     };
   });
 }
@@ -362,4 +362,10 @@ function formatSigned(value: number): string {
 
 function roundNumber(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function calculateBbPer100(results: StoredChipEvHandResult[]): number {
+  if (results.length === 0) return 0;
+  const totalBb = results.reduce((sum, result) => sum + (result.bbSize > 0 ? result.netChipsAdjusted / result.bbSize : 0), 0);
+  return roundNumber((totalBb / results.length) * 100);
 }

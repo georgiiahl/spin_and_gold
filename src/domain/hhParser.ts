@@ -44,6 +44,8 @@ type ParsedAction = {
   isForcedBet?: boolean;
 };
 
+type PreflopDecisionAction = 'fold' | 'call' | 'raise';
+
 // Supports both formats:
 //   "Poker Hand #SG3893499366: Tournament #286662086, Spin&Gold ..."
 //   "GGPoker Hand #12345 ..."
@@ -105,9 +107,7 @@ function parseSingleHand(handText: string): ParsedHand | null {
   const preflopActions = handState.actions
     .filter((action) => action.street === 'preflop')
     .filter((action) => !action.isForcedBet)
-    .filter((action): action is ParsedAction & { action: 'fold' | 'call' | 'raise' } =>
-     action.action === 'fold' || action.action === 'call' || action.action === 'raise'
-    )
+    .filter((action): action is ParsedAction & { action: PreflopDecisionAction } => isPreflopDecisionAction(action.action))
     .map((action) => ({
      player: action.player,
      position: parsedSeats.find((seat) => seat.name === action.player)?.position ?? '',
@@ -342,12 +342,14 @@ function parseBettingAction(
   const jam = line.match(/^(.+?): raises \d+(?:\.\d+)? to (\d+(?:\.\d+)?)( and is all-in)?/i);
   if (jam) {
     const totalAmount = Number(jam[2]);
+    const contributed = roundNumber(totalAmount - currentStreetAmount);
+    if (contributed < 0) return null;
     return {
       player: jam[1].trim(),
       action: 'raise',
       amount: totalAmount,
       street,
-      contributed: Math.max(0, roundNumber(totalAmount - currentStreetAmount)),
+      contributed,
       isAllIn: Boolean(jam[3]),
     };
   }
@@ -459,6 +461,10 @@ function escapeRegex(value: string): string {
 
 function roundNumber(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isPreflopDecisionAction(action: ParsedAction['action']): action is PreflopDecisionAction {
+  return action === 'fold' || action === 'call' || action === 'raise';
 }
 
 function toPublicPreflopAction(action: ParsedAction): 'fold' | 'call' | 'raise' | 'jam' {
