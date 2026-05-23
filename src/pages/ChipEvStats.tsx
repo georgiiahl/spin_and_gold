@@ -174,8 +174,8 @@ export default function ChipEvStats() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="cEV / tournament" value={`${formatSigned(summary.chipEvPerTournament)} chips`} />
-        <MetricCard label="cEV / tournament" value={`${formatSigned(chipEvBbPerTournament)} bb`} />
+        <MetricCard label="cEV / tournament (chips)" value={`${formatSigned(summary.chipEvPerTournament)} chips`} />
+        <MetricCard label="cEV / tournament (bb)" value={`${formatSigned(chipEvBbPerTournament)} bb`} />
         <MetricCard
           label="All-in adjusted bb/100"
           value={formatSigned(summary.chipEvBbPer100)}
