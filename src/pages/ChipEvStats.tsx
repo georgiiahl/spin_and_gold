@@ -48,6 +48,10 @@ export default function ChipEvStats() {
     );
     return roundNumber(totalBb / summary.totalTournaments);
   }, [filteredResults, summary.totalTournaments]);
+  const luckDeltaPerTournament = useMemo(
+    () => (summary.totalTournaments > 0 ? roundNumber(summary.luckDeltaChips / summary.totalTournaments) : 0),
+    [summary.luckDeltaChips, summary.totalTournaments]
+  );
 
   const chartPoints = useMemo(() => buildGraphPoints(filteredResults, graphMode), [filteredResults, graphMode]);
   const positionBreakdown = useMemo(() => buildPositionBreakdown(filteredResults), [filteredResults]);
@@ -92,7 +96,7 @@ export default function ChipEvStats() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <h1 className="text-xl font-bold">ChipEV Stats</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Import PokerCraft / GGPoker hand histories to track adjusted chip EV per tournament and bb/100.
+          Import PokerCraft / GGPoker hand histories to track all-in adjusted winrate across all hands, plus a separate all-in luck delta.
         </p>
       </div>
 
@@ -169,22 +173,31 @@ export default function ChipEvStats() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="ChipEV / tournament" value={`${formatSigned(summary.chipEvPerTournament)} chips`} />
-        <MetricCard label="ChipEV / tournament" value={`${formatSigned(chipEvBbPerTournament)} bb`} />
-        <MetricCard label="ChipEV bb/100" value={formatSigned(summary.chipEvBbPer100)} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard label="cEV / tournament (chips)" value={`${formatSigned(summary.chipEvPerTournament)} chips`} />
+        <MetricCard label="cEV / tournament (bb)" value={`${formatSigned(chipEvBbPerTournament)} bb`} />
+        <MetricCard
+          label="All-in adjusted bb/100"
+          value={formatSigned(summary.chipEvBbPer100)}
+          subValue="Total winrate across all hands with EV substituted on adjustable all-ins"
+        />
+        <MetricCard
+          label="Luck delta"
+          value={`${formatSigned(summary.luckDeltaChips)} chips`}
+          subValue={`Actual minus adjusted on all-in hands only · ${formatSigned(luckDeltaPerTournament)} chips / tournament`}
+        />
         <MetricCard
           label="Hands / tournaments"
           value={`${summary.totalHands} / ${summary.totalTournaments}`}
-          subValue={`${summary.adjustedHands} adjusted · ${summary.allInHandsCount} all-in hands`}
+          subValue={`All ${summary.totalHands} hands counted · ${summary.adjustedHands} EV substitutions from ${summary.allInHandsCount} all-in hands`}
         />
       </div>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold">ChipEV graph</h2>
-            <div className="text-sm text-gray-500">Cumulative adjusted chips and cEV/t over time.</div>
+            <h2 className="font-semibold">All-in adjusted cEV graph</h2>
+            <div className="text-sm text-gray-500">Cumulative all-in adjusted chips and cEV/t over time.</div>
           </div>
           <div className="text-sm text-gray-500">{chartPoints.length} points</div>
         </div>
