@@ -176,6 +176,13 @@ export default function Dashboard() {
           <div className="text-sm text-gray-500">Workload forecast and pool breakdown</div>
         </Link>
         <Link
+          to="/delta-trainer"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+        >
+          <div className="font-semibold">Delta Trainer</div>
+          <div className="text-sm text-gray-500">Learn differences between depths</div>
+        </Link>
+        <Link
           to="/stats"
           className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
         >
