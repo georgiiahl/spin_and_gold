@@ -1,26 +1,14 @@
-import { ChangeEvent, useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { isValidHand } from '@/domain/hands';
-import { HandFrequencies, SessionAnswer, Spot, SpotRange, TrainerCard } from '@/domain/types';
-import { getAllCards } from '@/storage/cards';
+import { HandFrequencies, Spot, SpotRange } from '@/domain/types';
 import { getDB } from '@/storage/db';
-import { getAllRanges, getRange } from '@/storage/ranges';
-import { getAllSessions } from '@/storage/sessions';
+import { createFullExportPayload, FullExportPayload, replaceAllData } from '@/storage/importExport';
+import { getRange } from '@/storage/ranges';
 import { getAllSpots, getSpot } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
-import { AppSettings, loadSettings, SETTINGS_KEY } from '@/storage/settings';
-
-type FullExportPayload = {
-  version: 1;
-  type: 'full';
-  exportedAt: number;
-  data: {
-    spots: Spot[];
-    ranges: Array<{ spotId: string; range: SpotRange }>;
-    cards: TrainerCard[];
-    sessions: SessionAnswer[];
-    settings?: AppSettings;
-  };
-};
+import { SETTINGS_KEY } from '@/storage/settings';
+import { encodeSyncPayload } from '@/storage/sync';
 
 type SpotExportPayload = {
   version: 1;
@@ -32,11 +20,17 @@ type SpotExportPayload = {
   };
 };
 const FREQUENCY_SUM_TOLERANCE = 0.01;
+const MAX_SYNC_QR_URL_LENGTH = 2500;
 
 export default function ImportExport() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [spotId, setSpotId] = useState('');
   const [status, setStatus] = useState<string>('');
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  const [syncWarning, setSyncWarning] = useState<string>('');
+  const [syncUrl, setSyncUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<number | null>(null);
   const [bundledStatus, setBundledStatus] = useState<string>('');
   const [bundledImporting, setBundledImporting] = useState(false);
 
@@ -48,25 +42,16 @@ export default function ImportExport() {
     });
   }, []);
 
-  async function exportAll() {
-    const [allSpots, allRanges, allCards, allSessions] = await Promise.all([
-      getAllSpots(),
-      getAllRanges(),
-      getAllCards(),
-      getAllSessions(),
-    ]);
-    const payload: FullExportPayload = {
-      version: 1,
-      type: 'full',
-      exportedAt: Date.now(),
-      data: {
-        spots: allSpots,
-        ranges: allRanges,
-        cards: allCards,
-        sessions: allSessions,
-        settings: loadSettings(),
-      },
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current !== null) {
+        window.clearTimeout(copiedTimeoutRef.current);
+      }
     };
+  }, []);
+
+  async function exportAll() {
+    const payload = await createFullExportPayload();
     downloadJson(`spin-gold-full-${Date.now()}.json`, payload);
   }
 
@@ -144,11 +129,84 @@ export default function ImportExport() {
     }
   }
 
+  async function buildSyncUrl(origin: string) {
+    const payload = await createFullExportPayload();
+    return encodeSyncPayload(payload, origin);
+  }
+
+  async function handleShowQrCode() {
+    setSyncStatus('');
+    setCopied(false);
+    try {
+      const url = await buildSyncUrl(window.location.origin);
+      if (url.length > MAX_SYNC_QR_URL_LENGTH) {
+        setSyncUrl('');
+        setSyncWarning('Sync link is too large for reliable QR scanning. Use full file export/import instead.');
+        return;
+      }
+      setSyncWarning('');
+      setSyncUrl(url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to prepare sync data.';
+      setSyncStatus(message);
+    }
+  }
+
+  async function handleCopySyncLink() {
+    setSyncStatus('');
+    try {
+      const url = await buildSyncUrl(window.location.origin);
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setSyncUrl(url);
+      setSyncWarning(url.length > MAX_SYNC_QR_URL_LENGTH
+        ? 'Link copied, but this payload may be too large for QR. Open the copied link directly on the target device.'
+        : ''
+      );
+      if (copiedTimeoutRef.current !== null) {
+        window.clearTimeout(copiedTimeoutRef.current);
+      }
+      copiedTimeoutRef.current = window.setTimeout(() => setCopied(false), 1600);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to copy sync link.';
+      setSyncStatus(message);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-4xl">
       <h1 className="text-xl font-bold mb-4">Import / Export</h1>
 
       <div className="space-y-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <h2 className="font-semibold">Sync between devices</h2>
+          <p className="text-sm text-gray-500">Computer → Phone: show QR. Phone → Computer: copy link and open it on your computer.</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleShowQrCode}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              Show QR code
+            </button>
+            <button
+              onClick={handleCopySyncLink}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {copied ? 'Copied!' : 'Copy sync link'}
+            </button>
+          </div>
+          {syncWarning && <p className="text-sm text-amber-700">{syncWarning}</p>}
+          {syncStatus && <p className="text-sm text-gray-700">{syncStatus}</p>}
+          {syncUrl && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-600 mb-3">Scan this QR with your phone.</p>
+              <div className="inline-block rounded-lg bg-white p-3">
+                <QRCodeSVG value={syncUrl} size={256} />
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <h2 className="font-semibold">Export full backup</h2>
           <p className="text-sm text-gray-500">Download all spots, ranges, cards and sessions.</p>
@@ -246,27 +304,6 @@ function downloadJson(filename: string, payload: unknown) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-async function replaceAllData(
-  spots: Spot[],
-  ranges: Array<{ spotId: string; range: SpotRange }>,
-  cards: TrainerCard[],
-  sessions: SessionAnswer[]
-) {
-  const db = await getDB();
-  const tx = db.transaction(['spots', 'ranges', 'cards', 'sessions'], 'readwrite');
-  await Promise.all([
-    tx.objectStore('spots').clear(),
-    tx.objectStore('ranges').clear(),
-    tx.objectStore('cards').clear(),
-    tx.objectStore('sessions').clear(),
-  ]);
-  for (const spot of spots) tx.objectStore('spots').put(spot);
-  for (const range of ranges) tx.objectStore('ranges').put(range);
-  for (const card of cards) tx.objectStore('cards').put(card);
-  for (const session of sessions) tx.objectStore('sessions').put(session);
-  await tx.done;
 }
 
 async function saveSingleSpot(spot: Spot, range: SpotRange) {
