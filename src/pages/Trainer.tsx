@@ -197,7 +197,8 @@ export default function Trainer() {
       selectedSpots.map((spot) => getSessionsBySpot(spot.id))
     );
     sessionHistoryRef.current = sessionsBySpot.flat();
-    const allSpots = await getAllSpots();
+    const secondActionSpots = selectedSpots.filter((spot) => isSecondAction(spot));
+    const allSpots = secondActionSpots.length > 0 ? await getAllSpots() : [];
 
     const categoryLabel = category ?? getSpotCategoryLabel(selectedSpots[0].category);
     setTrainingCategoryLabel(categoryLabel);
@@ -221,8 +222,7 @@ export default function Trainer() {
     }
 
     const parentSpotBySelectedSpot = new Map<string, Spot>();
-    for (const selectedSpot of selectedSpots) {
-      if (!isSecondAction(selectedSpot)) continue;
+    for (const selectedSpot of secondActionSpots) {
       const parentSpot = findParentSpot(selectedSpot, allSpots);
       if (parentSpot) parentSpotBySelectedSpot.set(selectedSpot.id, parentSpot);
     }
