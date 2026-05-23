@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 export default function Layout() {
   const location = useLocation();
@@ -32,6 +32,14 @@ export default function Layout() {
               </button>
             )}
             <span className="text-sm font-semibold text-gray-900">S&G Trainer</span>
+          </div>
+          <div className="ml-auto">
+            <Link
+              to="/practice"
+              className="rounded-md px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            >
+              Practice
+            </Link>
           </div>
         </div>
       </header>

@@ -7,7 +7,23 @@ import { getSpot } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
+const ACTION_KEYS: Record<string, Action> = {
+  f: 'fold',
+  '1': 'fold',
+  c: 'call',
+  '2': 'call',
+  r: 'raise',
+  '3': 'raise',
+  j: 'jam',
+  '4': 'jam',
+};
 const ACTION_LABELS: Record<Action, string> = { fold: 'Fold', call: 'Call', raise: 'Raise', jam: 'Jam' };
+const ACTION_SHORTCUT_LABELS: Record<Action, string> = {
+  fold: 'F · 1',
+  call: 'C · 2',
+  raise: 'R · 3',
+  jam: 'J · 4',
+};
 const ACTION_BUTTON_CLASSES: Record<Action, string> = {
   fold: 'bg-fold',
   call: 'bg-call',
@@ -68,6 +84,32 @@ export default function BorderTrainer() {
     setCurrentIdx((i) => (i + 1) % borderHands.length);
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingElement(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      if (!feedback) {
+        const action = ACTION_KEYS[key];
+        if (action) {
+          event.preventDefault();
+          handleAnswer(action);
+        }
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        next();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [feedback, handleAnswer, next]);
+
   if (!spot) return <div className="text-gray-500">Loading...</div>;
 
   if (borderHands.length === 0) {
@@ -102,9 +144,10 @@ export default function BorderTrainer() {
                 <button
                   key={a}
                   onClick={() => handleAnswer(a)}
-                  className={`rounded-xl ${ACTION_BUTTON_CLASSES[a]} py-4 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
+                  className={`flex flex-col items-center rounded-xl ${ACTION_BUTTON_CLASSES[a]} py-3 text-lg font-bold text-white shadow-sm transition-transform active:scale-95`}
                 >
-                  {ACTION_LABELS[a]}
+                  <span>{ACTION_LABELS[a]}</span>
+                  <span className="text-xs font-medium text-white/60">{ACTION_SHORTCUT_LABELS[a]}</span>
                 </button>
               ))}
             </div>
@@ -135,4 +178,11 @@ export default function BorderTrainer() {
       </Link>
     </div>
   );
+}
+
+function isTypingElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tagName = target.tagName;
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
 }

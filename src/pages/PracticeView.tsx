@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import RangeMatrix from '@/components/RangeMatrix';
-import { Spot, SpotRange, normalizeSpotCategory } from '@/domain/types';
+import { Spot, SpotRange, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
 import { getRange } from '@/storage/ranges';
-import { getSpotsByCategory } from '@/storage/spots';
+import { getAllSpots, getSpotsByCategory } from '@/storage/spots';
 
 type SpotWithRange = {
   spot: Spot;
   range: SpotRange;
+};
+
+type PracticeCategory = {
+  name: string;
+  spotCount: number;
 };
 
 const VIEWPORT_RESERVED_HEIGHT = 120;
@@ -17,10 +22,12 @@ const MAX_GRID_WIDTH = 1152;
 const MIN_CHART_SIZE = 40;
 
 export default function PracticeView() {
+  const navigate = useNavigate();
   const { category: categoryFromPath } = useParams<{ category?: string }>();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [spotRanges, setSpotRanges] = useState<SpotWithRange[]>([]);
+  const [categories, setCategories] = useState<PracticeCategory[]>([]);
   const resizeRafRef = useRef<number | null>(null);
   const [viewportSize, setViewportSize] = useState(() => ({
     width: window.innerWidth,
@@ -36,7 +43,20 @@ export default function PracticeView() {
     let cancelled = false;
 
     async function loadPracticeSpots() {
+      setLoading(true);
       if (!category) {
+        const allSpots = await getAllSpots();
+        const categoryMap = allSpots.reduce<Map<string, PracticeCategory>>((map, spot) => {
+          const name = getSpotCategoryLabel(spot.category);
+          map.set(name, {
+            name,
+            spotCount: (map.get(name)?.spotCount ?? 0) + 1,
+          });
+          return map;
+        }, new Map());
+        const categoryList = Array.from(categoryMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        if (cancelled) return;
+        setCategories(categoryList);
         setSpotRanges([]);
         setLoading(false);
         return;
@@ -52,6 +72,7 @@ export default function PracticeView() {
       const nextSpotRanges = sortedSpots
         .map((spot, index) => ({ spot, range: ranges[index] }))
         .filter((entry): entry is SpotWithRange => Boolean(entry.range));
+      setCategories([]);
       setSpotRanges(nextSpotRanges);
       setLoading(false);
     }
@@ -118,9 +139,33 @@ export default function PracticeView() {
 
   if (!category) {
     return (
-      <div className="mx-auto flex min-h-[40vh] w-full max-w-4xl flex-col items-center justify-center gap-2">
-        <p className="text-red-600">Category not provided.</p>
-        <Link to="/" className="text-sm text-blue-600">Back to dashboard</Link>
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="mb-4">
+          <h1 className="text-xl font-bold">Practice</h1>
+          <div className="text-sm text-gray-500">Select category</div>
+        </div>
+        {categories.length === 0 ? (
+          <div className="flex min-h-[30vh] flex-col items-center justify-center gap-2">
+            <p className="text-yellow-600">No categories found.</p>
+            <Link to="/" className="text-sm text-blue-600">Back to dashboard</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {categories.map((item) => (
+              <button
+                key={item.name}
+                type="button"
+                onClick={() => navigate(`/practice/${encodeURIComponent(item.name)}`)}
+                className="rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-gray-50"
+              >
+                <div className="font-semibold text-gray-900">{item.name}</div>
+                <div className="text-sm text-gray-500">
+                  {item.spotCount} spot{item.spotCount === 1 ? '' : 's'}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

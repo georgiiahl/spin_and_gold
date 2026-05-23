@@ -58,6 +58,24 @@ const ACTION_BAR_COLORS: Record<Action, string> = {
 };
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
+const ACTION_KEYS: Record<string, Action> = {
+  f: 'fold',
+  '1': 'fold',
+  c: 'call',
+  '2': 'call',
+  r: 'raise',
+  '3': 'raise',
+  j: 'jam',
+  '4': 'jam',
+};
+const ACTION_SHORTCUT_LABELS: Record<Action, string> = {
+  fold: 'F · 1',
+  call: 'C · 2',
+  raise: 'R · 3',
+  jam: 'J · 4',
+};
+const MIX_SHORTCUT_LABEL = 'M · 5';
+const MIX_KEYS = new Set(['m', '5']);
 const RECENT_HANDS_LIMIT = 10;
 const RECENT_SPOTS_LIMIT = 6;
 const MAX_DEPTH_DIFFERENCE_BB = 3;
@@ -655,6 +673,46 @@ export default function Trainer() {
     });
   }, [commitAnswer, currentCard, mixAllocations]);
 
+  const mixedActions = useMemo(
+    () => (currentCard ? ACTIONS.filter((a) => currentCard.frequencies[a] > 0) : []),
+    [currentCard]
+  );
+  const isMixedHand = mixedActions.length >= 2;
+  const mixAllocationTotal = mixedActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
+  const isMixTotalValid = Math.abs(mixAllocationTotal - MIX_TOTAL_TARGET) < MIX_TOTAL_EPSILON;
+  const isMixShortcutVisible = settings.showMixButton && isMixedHand;
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingElement(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      if (currentCard && !feedback) {
+        const action = ACTION_KEYS[key];
+        if (action && visibleActions.includes(action)) {
+          event.preventDefault();
+          void handleAnswer(action);
+          return;
+        }
+        if (isMixShortcutVisible && MIX_KEYS.has(key)) {
+          event.preventDefault();
+          startMixAllocation();
+          return;
+        }
+      }
+
+      if (feedback && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        pickNext();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [currentCard, feedback, handleAnswer, isMixShortcutVisible, pickNext, startMixAllocation, visibleActions]);
+
   // --- Live stats ---
   const accuracy = sessionCount > 0 ? Math.round((correctCount / sessionCount) * 100) : 0;
   const problemCount = cards.filter((c) => classifyCardPool(c) === 'problem').length;
@@ -691,10 +749,6 @@ export default function Trainer() {
   const userAnswerBarPosition = feedback
     ? getBarPosition(feedback.frequencies, feedback.selectedAction)
     : 0;
-  const mixedActions = currentCard ? ACTIONS.filter((a) => currentCard.frequencies[a] > 0) : [];
-  const isMixedHand = mixedActions.length >= 2;
-  const mixAllocationTotal = mixedActions.reduce((sum, action) => sum + (mixAllocations[action] ?? 0), 0);
-  const isMixTotalValid = Math.abs(mixAllocationTotal - MIX_TOTAL_TARGET) < MIX_TOTAL_EPSILON;
 
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col pb-[env(safe-area-inset-bottom)]">
@@ -763,18 +817,20 @@ export default function Trainer() {
                     key={action}
                     onClick={() => handleAnswer(action)}
                     aria-label={`${ACTION_LABELS[action]} action`}
-                    className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white active:scale-95`}
+                    className={`flex flex-1 flex-col items-center rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-3 text-base font-bold text-white active:scale-95`}
                   >
-                    {ACTION_LABELS[action]}
+                    <span>{ACTION_LABELS[action]}</span>
+                    <span className="text-xs font-medium text-white/60">{ACTION_SHORTCUT_LABELS[action]}</span>
                   </button>
                 ))}
                 {settings.showMixButton && isMixedHand && (
                   <button
                     onClick={startMixAllocation}
                     aria-label="Mix action"
-                    className="flex-1 rounded-xl bg-purple-600 py-4 text-base font-bold text-white active:scale-95"
+                    className="flex flex-1 flex-col items-center rounded-xl bg-purple-600 py-3 text-base font-bold text-white active:scale-95"
                   >
-                    Mix
+                    <span>Mix</span>
+                    <span className="text-xs font-medium text-white/60">{MIX_SHORTCUT_LABEL}</span>
                   </button>
                 )}
               </div>
@@ -926,4 +982,11 @@ function classifyError(
   }
 
   return { type: 'wrong' };
+}
+
+function isTypingElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tagName = target.tagName;
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
 }
