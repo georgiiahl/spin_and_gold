@@ -227,9 +227,8 @@ export default function Trainer() {
       if (parentSpot) parentSpotBySelectedSpot.set(selectedSpot.id, parentSpot);
     }
 
-    const uniqueParentSpotIds = Array.from(
-      new Set(Array.from(parentSpotBySelectedSpot.values()).map((spot) => spot.id))
-    );
+    const parentSpots = Array.from(parentSpotBySelectedSpot.values());
+    const uniqueParentSpotIds = Array.from(new Set(parentSpots.map((spot) => spot.id)));
     const parentRangeEntries = await Promise.all(
       uniqueParentSpotIds.map(async (spotId) => [spotId, (await getRange(spotId)) ?? null] as const)
     );

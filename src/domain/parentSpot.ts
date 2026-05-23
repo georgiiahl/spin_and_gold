@@ -28,11 +28,13 @@ export function findParentSpot(spot: Spot, allSpots: Spot[]): Spot | null {
 }
 
 export function getAllowedHands(parentRange: SpotRange): string[] {
-  return Object.entries(parentRange)
-    .filter(([, frequencies]) =>
-      (frequencies.call + frequencies.raise + frequencies.jam) > FREQUENCY_EPSILON
-    )
-    .map(([hand]) => hand);
+  const allowedHands: string[] = [];
+  for (const [hand, frequencies] of Object.entries(parentRange)) {
+    if ((frequencies.call + frequencies.raise + frequencies.jam) > FREQUENCY_EPSILON) {
+      allowedHands.push(hand);
+    }
+  }
+  return allowedHands;
 }
 
 function isSameHistory(left: Spot['history'], right: Spot['history']): boolean {
