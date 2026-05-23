@@ -36,7 +36,7 @@ type SeatRow = {
 
 type ParsedAction = {
   player: string;
-  action: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'jam';
+  action: 'fold' | 'check' | 'call' | 'bet' | 'raise';
   amount?: number;
   street: 'preflop' | 'flop' | 'turn' | 'river';
   contributed: number;
@@ -105,13 +105,13 @@ function parseSingleHand(handText: string): ParsedHand | null {
   const preflopActions = handState.actions
     .filter((action) => action.street === 'preflop')
     .filter((action) => !action.isForcedBet)
-    .filter((action): action is ParsedAction & { action: 'fold' | 'call' | 'raise' | 'jam' } =>
-     action.action === 'fold' || action.action === 'call' || action.action === 'raise' || action.action === 'jam'
+    .filter((action): action is ParsedAction & { action: 'fold' | 'call' | 'raise' } =>
+     action.action === 'fold' || action.action === 'call' || action.action === 'raise'
     )
     .map((action) => ({
      player: action.player,
      position: parsedSeats.find((seat) => seat.name === action.player)?.position ?? '',
-     action: action.action,
+     action: toPublicPreflopAction(action),
      amount: action.amount,
     }));
 
@@ -344,7 +344,7 @@ function parseBettingAction(
     const totalAmount = Number(jam[2]);
     return {
       player: jam[1].trim(),
-      action: jam[3] ? 'jam' : 'raise',
+      action: 'raise',
       amount: totalAmount,
       street,
       contributed: Math.max(0, roundNumber(totalAmount - currentStreetAmount)),
@@ -357,7 +357,7 @@ function parseBettingAction(
     const amount = Number(bet[2]);
     return {
       player: bet[1].trim(),
-      action: bet[3] ? 'jam' : 'bet',
+      action: 'bet',
       amount,
       street,
       contributed: amount,
@@ -459,6 +459,12 @@ function escapeRegex(value: string): string {
 
 function roundNumber(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function toPublicPreflopAction(action: ParsedAction): 'fold' | 'call' | 'raise' | 'jam' {
+  if (action.action === 'raise' && action.isAllIn) return 'jam';
+  if (action.action === 'fold' || action.action === 'call' || action.action === 'raise') return action.action;
+  return 'call';
 }
 
 function parseSeatNumber(value?: string): number | null {

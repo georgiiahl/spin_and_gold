@@ -91,7 +91,7 @@ export default function ChipEvStats() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <h1 className="text-xl font-bold">ChipEV Stats</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Import PokerCraft hand histories to track adjusted chip EV per tournament and bb/100.
+          Import PokerCraft / GGPoker hand histories to track adjusted chip EV per tournament and bb/100.
         </p>
       </div>
 
