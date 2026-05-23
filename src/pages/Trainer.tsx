@@ -11,7 +11,7 @@ import {
   normalizeSpotCategory,
 } from '@/domain/types';
 import { ALL_HANDS } from '@/domain/hands';
-import { getSpot, getSpotsByCategory } from '@/storage/spots';
+import { getAllSpots, getSpot, getSpotsByCategory } from '@/storage/spots';
 import { getRange } from '@/storage/ranges';
 import { getSessionsBySpot, saveSession } from '@/storage/sessions';
 import { getCardsBySpot, saveCard, saveCards } from '@/storage/cards';
@@ -25,6 +25,7 @@ import {
   REVIEW_SAMPLE_EVERY_N,
 } from '@/domain/priority';
 import { filterTrainableCards } from '@/domain/trainable';
+import { findParentSpot, getAllowedHands, isSecondAction } from '@/domain/parentSpot';
 import { BalancedAnswer, scoreBalancedAnswer } from '@/domain/scoring';
 import { loadSettings, AppSettings } from '@/storage/settings';
 import PokerTable from '@/components/PokerTable';
@@ -196,6 +197,7 @@ export default function Trainer() {
       selectedSpots.map((spot) => getSessionsBySpot(spot.id))
     );
     sessionHistoryRef.current = sessionsBySpot.flat();
+    const allSpots = await getAllSpots();
 
     const categoryLabel = category ?? getSpotCategoryLabel(selectedSpots[0].category);
     setTrainingCategoryLabel(categoryLabel);
@@ -205,6 +207,8 @@ export default function Trainer() {
     const cardsToPersist: TrainerCard[] = [];
     const rangeMap = new Map<string, SpotRange>();
     const existingCardsBySpot = new Map<string, TrainerCard[]>();
+    const parentAllowedHandsBySpot = new Map<string, Set<string>>();
+    const parentRangeCache = new Map<string, SpotRange | null>();
 
     for (const selectedSpot of selectedSpots) {
       const [range, existingCards] = await Promise.all([
@@ -218,8 +222,24 @@ export default function Trainer() {
     }
 
     for (const selectedSpot of selectedSpots) {
+      if (!isSecondAction(selectedSpot)) continue;
+      const parentSpot = findParentSpot(selectedSpot, allSpots);
+      if (!parentSpot) continue;
+
+      let parentRange = parentRangeCache.get(parentSpot.id);
+      if (parentRange === undefined) {
+        parentRange = (await getRange(parentSpot.id)) ?? null;
+        parentRangeCache.set(parentSpot.id, parentRange);
+      }
+
+      if (!parentRange) continue;
+      parentAllowedHandsBySpot.set(selectedSpot.id, new Set(getAllowedHands(parentRange)));
+    }
+
+    for (const selectedSpot of selectedSpots) {
       const range = rangeMap.get(selectedSpot.id);
       if (!range) continue;
+      const allowedHands = parentAllowedHandsBySpot.get(selectedSpot.id);
 
       const siblings = selectedSpots.filter(
         (s) => s.id !== selectedSpot.id && normalizeSpotCategory(s.category) === normalizeSpotCategory(selectedSpot.category)
@@ -227,6 +247,7 @@ export default function Trainer() {
       const cardMap = new Map((existingCardsBySpot.get(selectedSpot.id) ?? []).map((c) => [c.hand, c]));
 
       for (const hand of ALL_HANDS) {
+        if (allowedHands && !allowedHands.has(hand)) continue;
         const freq = range[hand];
         if (!freq || (freq.fold + freq.call + freq.raise + freq.jam) === 0) continue;
 

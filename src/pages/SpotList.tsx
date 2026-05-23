@@ -91,8 +91,16 @@ export default function SpotList() {
             <div key={category} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
                 <div className="font-semibold">{category}</div>
-                <div className="text-xs text-gray-500">
-                  {categorySpots.length} spot{categorySpots.length === 1 ? '' : 's'}
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/practice/${encodeURIComponent(category)}`}
+                    className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                  >
+                    Practice
+                  </Link>
+                  <div className="text-xs text-gray-500">
+                    {categorySpots.length} spot{categorySpots.length === 1 ? '' : 's'}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
