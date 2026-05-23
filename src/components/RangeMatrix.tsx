@@ -4,7 +4,7 @@ import { Action, HandFrequencies } from '@/domain/types';
 
 type Props = {
   range: Record<string, HandFrequencies>;
-  onCellAction: (hand: string, action: Action) => void;
+  onCellAction?: (hand: string, action: Action) => void;
   onCellClick?: (hand: string) => void;
   getCellClassName?: (hand: string, freq: HandFrequencies | undefined) => string;
   activeAction: Action;
@@ -19,6 +19,8 @@ const ACTION_COLORS: Record<Action, string> = {
   raise: 'bg-raise',
   jam: 'bg-jam',
 };
+const DEFAULT_CELL_TEXT_CLASS = 'text-[8px] sm:text-[10px]';
+const COMPACT_CELL_TEXT_CLASS = 'text-[7px] sm:text-[8px]';
 
 function getCellColor(freq: HandFrequencies | undefined): string {
   if (!freq) return 'bg-gray-100';
@@ -93,7 +95,7 @@ export default function RangeMatrix({
         return;
       }
       setIsPainting(true);
-      onCellAction(hand, activeAction);
+      onCellAction?.(hand, activeAction);
     },
     [activeAction, mode, readOnly, onCellAction, onCellClick]
   );
@@ -101,7 +103,7 @@ export default function RangeMatrix({
   const handlePointerEnter = useCallback(
     (hand: string) => {
       if (readOnly || mode === 'frequency' || !isPainting) return;
-      onCellAction(hand, activeAction);
+      onCellAction?.(hand, activeAction);
     },
     [isPainting, activeAction, mode, readOnly, onCellAction]
   );
@@ -126,19 +128,20 @@ export default function RangeMatrix({
             const baseColor = getCellColor(freq);
             const style = getCellStyle(freq);
             const hasMix = freq && Object.values(freq).filter((v) => v > 0).length > 1;
+            const shouldHandlePointerDown = !readOnly || Boolean(onCellClick);
 
             return (
               <div
                 key={`${r}-${c}`}
-                className={`aspect-square flex items-center justify-center ${compact ? 'text-[7px] sm:text-[8px]' : 'text-[8px] sm:text-[10px]'} font-medium rounded-[2px]
+                className={`aspect-square flex items-center justify-center ${compact ? COMPACT_CELL_TEXT_CLASS : DEFAULT_CELL_TEXT_CLASS} font-medium rounded-[2px]
                 ${readOnly ? 'cursor-default' : 'cursor-pointer'}
                 ${!style.background ? baseColor : ''}
                 ${hasMix ? 'ring-1 ring-white/40' : ''}
                 ${getCellClassName?.(hand, freq) ?? ''}
                 ${readOnly ? '' : 'hover:brightness-125'} transition-all`}
                 style={style.background ? style : undefined}
-                onPointerDown={() => handlePointerDown(hand)}
-                onPointerEnter={() => handlePointerEnter(hand)}
+                onPointerDown={shouldHandlePointerDown ? () => handlePointerDown(hand) : undefined}
+                onPointerEnter={readOnly ? undefined : () => handlePointerEnter(hand)}
               >
                 <span className={freq ? 'text-white' : 'text-gray-500'}>{hand}</span>
               </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import RangeMatrix from '@/components/RangeMatrix';
 import { Spot, SpotRange, normalizeSpotCategory } from '@/domain/types';
@@ -10,11 +10,18 @@ type SpotWithRange = {
   range: SpotRange;
 };
 
+const VIEWPORT_RESERVED_HEIGHT = 120;
+const MIN_GRID_HEIGHT = 240;
+const MIN_GRID_WIDTH = 320;
+const MAX_GRID_WIDTH = 1152;
+const MIN_CHART_SIZE = 40;
+
 export default function PracticeView() {
   const { category: categoryFromPath } = useParams<{ category?: string }>();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [spotRanges, setSpotRanges] = useState<SpotWithRange[]>([]);
+  const resizeRafRef = useRef<number | null>(null);
   const [viewportSize, setViewportSize] = useState(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -57,14 +64,25 @@ export default function PracticeView() {
 
   useEffect(() => {
     function handleResize() {
-      setViewportSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        setViewportSize({
+          width: window.innerWidth,
+          height: window.innerHeight,
+        });
+        resizeRafRef.current = null;
       });
     }
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+    };
   }, []);
 
   const gridLayout = useMemo(() => {
@@ -73,8 +91,8 @@ export default function PracticeView() {
 
     const gap = viewportSize.width < 640 ? 8 : 12;
     const labelHeight = 16;
-    const availableHeight = Math.max(viewportSize.height - 120, 240);
-    const availableWidth = Math.max(Math.min(viewportSize.width - 32, 1152), 320);
+    const availableHeight = Math.max(viewportSize.height - VIEWPORT_RESERVED_HEIGHT, MIN_GRID_HEIGHT);
+    const availableWidth = Math.max(Math.min(viewportSize.width - 32, MAX_GRID_WIDTH), MIN_GRID_WIDTH);
     const minCols = viewportSize.width < 640 ? 2 : 1;
 
     let bestColumns = minCols;
@@ -91,7 +109,7 @@ export default function PracticeView() {
       }
     }
 
-    return { columns: bestColumns, chartSize: Math.max(bestSize, 40) };
+    return { columns: bestColumns, chartSize: Math.max(bestSize, MIN_CHART_SIZE) };
   }, [spotRanges.length, viewportSize.height, viewportSize.width]);
 
   if (loading) {
@@ -124,8 +142,11 @@ export default function PracticeView() {
       </div>
 
       <div
-        className="grid h-[calc(100vh-120px)] gap-2 overflow-hidden sm:gap-3"
-        style={{ gridTemplateColumns: `repeat(${gridLayout.columns}, minmax(0, 1fr))` }}
+        className="grid gap-2 overflow-hidden sm:gap-3"
+        style={{
+          height: `calc(100vh - ${VIEWPORT_RESERVED_HEIGHT}px)`,
+          gridTemplateColumns: `repeat(${gridLayout.columns}, minmax(0, 1fr))`,
+        }}
       >
         {spotRanges.map(({ spot, range }) => (
           <div
@@ -134,7 +155,7 @@ export default function PracticeView() {
           >
             <div className="text-[10px] font-semibold text-gray-700 sm:text-xs">{spot.effectiveStackBb}bb</div>
             <div style={{ width: `${gridLayout.chartSize}px` }} className="max-w-full">
-              <RangeMatrix range={range} onCellAction={() => {}} activeAction="fold" mode="simple" readOnly compact />
+              <RangeMatrix range={range} activeAction="fold" mode="simple" readOnly compact />
             </div>
           </div>
         ))}
