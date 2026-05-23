@@ -28,6 +28,12 @@ const ACTION_SELECTED_CLASS: Record<Action, string> = {
   jam: 'bg-jam text-white',
 };
 
+function getStepButtonClass(isSelected: boolean, wouldExceed: boolean, action: Action): string {
+  if (isSelected) return ACTION_SELECTED_CLASS[action];
+  if (wouldExceed) return 'cursor-not-allowed bg-slate-800 text-slate-500';
+  return 'bg-slate-800 text-slate-200 hover:bg-slate-700';
+}
+
 export default function FrequencyModal({ hand, frequencies, onSave, onClose }: Props) {
   // Work in integer percentages (0–100) for a clean quarter-step UX
   const [values, setValues] = useState<Record<Action, number>>({
@@ -88,9 +94,9 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
             sum > 100
              ? 'bg-red-500/20 text-red-300'
               : remaining === 0
-             ? 'bg-emerald-500/20 text-emerald-300'
-             : 'bg-slate-800 text-amber-300'
-           }`}
+               ? 'bg-emerald-500/20 text-emerald-300'
+               : 'bg-slate-800 text-amber-300'
+          }`}
         >
           {sum}/100 used ·{' '}
           {remaining > 0 ? `${remaining} remaining` : remaining === 0 ? 'fully allocated' : 'over budget'}
@@ -117,11 +123,7 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
                         disabled={wouldExceed}
                         aria-label={`Set ${ACTION_LABELS[a]} to ${step} percent`}
                         className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                          isSelected
-                             ? ACTION_SELECTED_CLASS[a]
-                          : wouldExceed
-                           ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-                             : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                          getStepButtonClass(isSelected, wouldExceed, a)
                         }`}
                       >
                         {step}

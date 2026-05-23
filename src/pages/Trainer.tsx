@@ -663,6 +663,7 @@ export default function Trainer() {
     return p === 'learning' || p === 'new';
   }).length;
   const masteredCount = cards.filter((c) => c.memory.phase === 'mastered' || (c.memory.phase === 'review' && c.memory.intervalDays >= 7)).length;
+  const isAdminMode = typeof window !== 'undefined' && localStorage.getItem('spin-gold-admin-mode') === 'true';
 
   // --- RENDER ---
 
@@ -683,7 +684,11 @@ export default function Trainer() {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2">
         <p className="text-amber-300">No hands in range. Fill the chart first.</p>
-        <Link to={`/admin/spots/${currentSpot.id}/range`} className="text-sm text-gold-300">Open Chart Editor</Link>
+        {isAdminMode ? (
+          <Link to={`/admin/spots/${currentSpot.id}/range`} className="text-sm text-gold-300">Open Chart Editor</Link>
+        ) : (
+          <Link to="/settings" className="text-sm text-gold-300">Open Settings</Link>
+        )}
       </div>
     );
   }

@@ -9,6 +9,7 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
 
 const Input = forwardRef<HTMLInputElement, Props>(function Input({ label, helperText, error, className, id, ...props }, ref) {
   const inputId = id ?? props.name;
+  const describedBy = error ? `${inputId}-error` : helperText ? `${inputId}-help` : undefined;
 
   return (
     <label className="block space-y-1.5 text-sm" htmlFor={inputId}>
@@ -22,7 +23,7 @@ const Input = forwardRef<HTMLInputElement, Props>(function Input({ label, helper
           className
         )}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-help` : undefined}
+        aria-describedby={describedBy}
         {...props}
       />
       {error ? <span id={`${inputId}-error`} className="text-xs text-red-400">{error}</span> : helperText ? <span id={`${inputId}-help`} className="text-xs text-slate-400">{helperText}</span> : null}

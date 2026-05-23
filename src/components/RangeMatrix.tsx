@@ -158,6 +158,7 @@ export default function RangeMatrix({ range, onCellAction, onCellClick, getCellC
               data-col={c}
               data-hand={hand}
               tabIndex={0}
+              aria-disabled={readOnly && !onCellClick}
               aria-label={
                 readOnly
                   ? `${hand} range cell`
