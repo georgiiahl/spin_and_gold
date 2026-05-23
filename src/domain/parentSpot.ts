@@ -38,6 +38,6 @@ export function getAllowedHands(parentRange: SpotRange): string[] {
 function isSameHistory(left: Spot['history'], right: Spot['history']): boolean {
   if (left.length !== right.length) return false;
   return left.every((entry, index) =>
-    entry.position === right[index]?.position && entry.action === right[index]?.action
+    entry.position === right[index].position && entry.action === right[index].action
   );
 }

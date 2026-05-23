@@ -208,7 +208,6 @@ export default function Trainer() {
     const rangeMap = new Map<string, SpotRange>();
     const existingCardsBySpot = new Map<string, TrainerCard[]>();
     const parentAllowedHandsBySpot = new Map<string, Set<string>>();
-    const parentRangeCache = new Map<string, SpotRange | null>();
 
     for (const selectedSpot of selectedSpots) {
       const [range, existingCards] = await Promise.all([
@@ -221,19 +220,25 @@ export default function Trainer() {
       existingCardsBySpot.set(selectedSpot.id, existingCards);
     }
 
+    const parentSpotBySelectedSpot = new Map<string, Spot>();
     for (const selectedSpot of selectedSpots) {
       if (!isSecondAction(selectedSpot)) continue;
       const parentSpot = findParentSpot(selectedSpot, allSpots);
-      if (!parentSpot) continue;
+      if (parentSpot) parentSpotBySelectedSpot.set(selectedSpot.id, parentSpot);
+    }
 
-      let parentRange = parentRangeCache.get(parentSpot.id);
-      if (parentRange === undefined) {
-        parentRange = (await getRange(parentSpot.id)) ?? null;
-        parentRangeCache.set(parentSpot.id, parentRange);
-      }
+    const uniqueParentSpotIds = Array.from(
+      new Set(Array.from(parentSpotBySelectedSpot.values()).map((spot) => spot.id))
+    );
+    const parentRangeEntries = await Promise.all(
+      uniqueParentSpotIds.map(async (spotId) => [spotId, (await getRange(spotId)) ?? null] as const)
+    );
+    const parentRangeCache = new Map<string, SpotRange | null>(parentRangeEntries);
 
+    for (const [selectedSpotId, parentSpot] of parentSpotBySelectedSpot.entries()) {
+      const parentRange = parentRangeCache.get(parentSpot.id);
       if (!parentRange) continue;
-      parentAllowedHandsBySpot.set(selectedSpot.id, new Set(getAllowedHands(parentRange)));
+      parentAllowedHandsBySpot.set(selectedSpotId, new Set(getAllowedHands(parentRange)));
     }
 
     for (const selectedSpot of selectedSpots) {
