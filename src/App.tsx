@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
 import SpotList from '@/pages/SpotList';
 import SpotForm from '@/pages/SpotForm';
@@ -17,12 +17,17 @@ import Forecast from '@/pages/Forecast';
 import ReviewPage from '@/pages/ReviewPage';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
+import { replaceAllData } from '@/storage/importExport';
+import { SETTINGS_KEY } from '@/storage/settings';
+import { decodeSyncPayload } from '@/storage/sync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { InstallBanner } from '@/components/InstallBanner';
 import Layout from '@/components/Layout';
 
 export default function App() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     let mounted = true;
     getAllSpots().then((spots) => {
@@ -39,6 +44,39 @@ export default function App() {
     });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function importFromSyncHash() {
+      const payload = decodeSyncPayload(window.location.hash);
+      if (!payload) return;
+      const confirmed = confirm('Import synced data from another device? This will replace your current data.');
+      if (!confirmed) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        return;
+      }
+      try {
+        await replaceAllData(payload.data.spots, payload.data.ranges, payload.data.cards, payload.data.sessions);
+        if (payload.data.settings) {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload.data.settings));
+        }
+        if (!cancelled) {
+          alert('Sync import completed successfully.');
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          navigate('/', { replace: true });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Sync import failed.';
+        alert(message);
+      }
+    }
+
+    importFromSyncHash();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   return (
     <ErrorBoundary>
