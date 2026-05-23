@@ -10,6 +10,7 @@ type Props = {
   activeAction: Action;
   mode: 'simple' | 'frequency';
   readOnly?: boolean;
+  compact?: boolean;
 };
 
 const ACTION_COLORS: Record<Action, string> = {
@@ -68,7 +69,16 @@ function getCellStyle(freq: HandFrequencies | undefined): React.CSSProperties {
   return { background: `linear-gradient(135deg, ${stops.join(', ')})` };
 }
 
-export default function RangeMatrix({ range, onCellAction, onCellClick, getCellClassName, activeAction, mode, readOnly }: Props) {
+export default function RangeMatrix({
+  range,
+  onCellAction,
+  onCellClick,
+  getCellClassName,
+  activeAction,
+  mode,
+  readOnly,
+  compact = false,
+}: Props) {
   const [isPainting, setIsPainting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -102,35 +112,40 @@ export default function RangeMatrix({ range, onCellAction, onCellClick, getCellC
 
   return (
     <div
-      ref={containerRef}
-      className="grid grid-cols-13 gap-[1px] select-none touch-none"
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      className="aspect-square w-full max-w-full"
     >
-      {HAND_MATRIX.map((row, r) =>
-        row.map((hand, c) => {
-          const freq = range[hand];
-          const baseColor = getCellColor(freq);
-          const style = getCellStyle(freq);
-          const hasMix = freq && Object.values(freq).filter((v) => v > 0).length > 1;
+      <div
+        ref={containerRef}
+        className="grid h-full w-full grid-cols-13 gap-[1px] select-none touch-none"
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        {HAND_MATRIX.map((row, r) =>
+          row.map((hand, c) => {
+            const freq = range[hand];
+            const baseColor = getCellColor(freq);
+            const style = getCellStyle(freq);
+            const hasMix = freq && Object.values(freq).filter((v) => v > 0).length > 1;
 
-          return (
-            <div
-              key={`${r}-${c}`}
-              className={`aspect-square flex items-center justify-center text-[8px] sm:text-[10px] font-medium rounded-[2px] cursor-pointer
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={`aspect-square flex items-center justify-center ${compact ? 'text-[7px] sm:text-[8px]' : 'text-[8px] sm:text-[10px]'} font-medium rounded-[2px]
+                ${readOnly ? 'cursor-default' : 'cursor-pointer'}
                 ${!style.background ? baseColor : ''}
                 ${hasMix ? 'ring-1 ring-white/40' : ''}
                 ${getCellClassName?.(hand, freq) ?? ''}
-                hover:brightness-125 transition-all`}
-              style={style.background ? style : undefined}
-              onPointerDown={() => handlePointerDown(hand)}
-              onPointerEnter={() => handlePointerEnter(hand)}
-            >
-              <span className={freq ? 'text-white' : 'text-gray-500'}>{hand}</span>
-            </div>
-          );
-        })
-      )}
+                ${readOnly ? '' : 'hover:brightness-125'} transition-all`}
+                style={style.background ? style : undefined}
+                onPointerDown={() => handlePointerDown(hand)}
+                onPointerEnter={() => handlePointerEnter(hand)}
+              >
+                <span className={freq ? 'text-white' : 'text-gray-500'}>{hand}</span>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
