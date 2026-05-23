@@ -1,6 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Spot, SpotRange, TrainerCard, SessionAnswer } from '@/domain/types';
 import type { StoredHandHistory } from '@/storage/hhStore';
+import type { StoredChipEvHandResult } from '@/storage/chipEvStore';
 
 interface SpinGoldDB extends DBSchema {
   spots: {
@@ -27,10 +28,15 @@ interface SpinGoldDB extends DBSchema {
     value: StoredHandHistory;
     indexes: { 'by-imported-at': number };
   };
+  chipEvHands: {
+    key: string;
+    value: StoredChipEvHandResult;
+    indexes: { 'by-imported-at': number };
+  };
 }
 
 const DB_NAME = 'spin-gold-trainer';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase<SpinGoldDB> | null = null;
 
@@ -63,6 +69,11 @@ export async function getDB(): Promise<IDBPDatabase<SpinGoldDB>> {
       if (!db.objectStoreNames.contains('handHistories')) {
         const handHistoryStore = db.createObjectStore('handHistories', { keyPath: 'id' });
         handHistoryStore.createIndex('by-imported-at', 'importedAt');
+      }
+
+      if (!db.objectStoreNames.contains('chipEvHands')) {
+        const chipEvStore = db.createObjectStore('chipEvHands', { keyPath: 'id' });
+        chipEvStore.createIndex('by-imported-at', 'importedAt');
       }
     },
   });

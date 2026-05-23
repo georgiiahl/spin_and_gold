@@ -16,6 +16,7 @@ import Settings from '@/pages/Settings';
 import Forecast from '@/pages/Forecast';
 import ReviewPage from '@/pages/ReviewPage';
 import PracticeView from '@/pages/PracticeView';
+import ChipEvStats from '@/pages/ChipEvStats';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
 import { replaceAllData } from '@/storage/importExport';
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="/stats" element={<GlobalStats />} />
             <Route path="/import-export" element={<ImportExport />} />
             <Route path="/review" element={<ReviewPage />} />
+            <Route path="/chip-ev" element={<ChipEvStats />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/forecast" element={<Forecast />} />
             <Route path="*" element={<Navigate to="/" replace />} />
