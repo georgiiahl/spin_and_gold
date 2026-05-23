@@ -464,13 +464,13 @@ function roundNumber(value: number): number {
 }
 
 function isPreflopDecisionAction(action: ParsedAction['action']): action is PreflopDecisionAction {
-  return action === 'fold' || action === 'call' || action === 'raise';
+  return (['fold', 'call', 'raise'] as const).includes(action as PreflopDecisionAction);
 }
 
 function toPublicPreflopAction(action: ParsedAction): 'fold' | 'call' | 'raise' | 'jam' {
   if (action.action === 'raise' && action.isAllIn) return 'jam';
   if (action.action === 'fold' || action.action === 'call' || action.action === 'raise') return action.action;
-  return 'call';
+  throw new Error(`Unexpected preflop action: ${action.action}`);
 }
 
 function parseSeatNumber(value?: string): number | null {

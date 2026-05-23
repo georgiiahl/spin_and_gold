@@ -335,7 +335,7 @@ function buildPositionBreakdown(results: StoredChipEvHandResult[]) {
       hands: items.length,
       tournaments: summary.totalTournaments,
       chipEvPerTournament: summary.chipEvPerTournament,
-      bbPer100: calculateBbPer100(items),
+      bbPer100: calculateChipEvBbPer100(items),
     };
   });
 }
@@ -364,7 +364,7 @@ function roundNumber(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function calculateBbPer100(results: StoredChipEvHandResult[]): number {
+function calculateChipEvBbPer100(results: StoredChipEvHandResult[]): number {
   if (results.length === 0) return 0;
   const totalBb = results.reduce((sum, result) => sum + (result.bbSize > 0 ? result.netChipsAdjusted / result.bbSize : 0), 0);
   return roundNumber((totalBb / results.length) * 100);
