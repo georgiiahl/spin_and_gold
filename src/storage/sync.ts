@@ -3,10 +3,10 @@ import { FullExportPayload } from '@/storage/importExport';
 
 const SYNC_PREFIX = '#sync=';
 
-export function encodeSyncPayload(data: FullExportPayload): string {
+export function encodeSyncPayload(data: FullExportPayload, origin: string): string {
   const serialized = JSON.stringify(data);
   const compressed = compressToEncodedURIComponent(serialized);
-  return `${window.location.origin}/#sync=${compressed}`;
+  return `${origin}/#sync=${compressed}`;
 }
 
 export function decodeSyncPayload(hash: string): FullExportPayload | null {
@@ -17,7 +17,16 @@ export function decodeSyncPayload(hash: string): FullExportPayload | null {
   if (!json) return null;
   try {
     const parsed = JSON.parse(json) as FullExportPayload;
-    if (parsed?.version !== 1 || parsed?.type !== 'full' || !parsed?.data) {
+    const data = parsed?.data;
+    if (
+      parsed?.version !== 1 ||
+      parsed?.type !== 'full' ||
+      !data ||
+      !Array.isArray(data.spots) ||
+      !Array.isArray(data.ranges) ||
+      !Array.isArray(data.cards) ||
+      !Array.isArray(data.sessions)
+    ) {
       return null;
     }
     return parsed;

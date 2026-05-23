@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { isValidHand } from '@/domain/hands';
 import { HandFrequencies, Spot, SpotRange } from '@/domain/types';
@@ -30,6 +30,7 @@ export default function ImportExport() {
   const [syncWarning, setSyncWarning] = useState<string>('');
   const [syncUrl, setSyncUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<number | null>(null);
   const [bundledStatus, setBundledStatus] = useState<string>('');
   const [bundledImporting, setBundledImporting] = useState(false);
 
@@ -39,6 +40,14 @@ export default function ImportExport() {
       setSpots(sorted);
       setSpotId(sorted[0]?.id ?? '');
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current !== null) {
+        window.clearTimeout(copiedTimeoutRef.current);
+      }
+    };
   }, []);
 
   async function exportAll() {
@@ -120,16 +129,16 @@ export default function ImportExport() {
     }
   }
 
-  async function buildSyncUrl() {
+  async function buildSyncUrl(origin: string) {
     const payload = await createFullExportPayload();
-    return encodeSyncPayload(payload);
+    return encodeSyncPayload(payload, origin);
   }
 
   async function handleShowQrCode() {
     setSyncStatus('');
     setCopied(false);
     try {
-      const url = await buildSyncUrl();
+      const url = await buildSyncUrl(window.location.origin);
       if (url.length > MAX_SYNC_QR_URL_LENGTH) {
         setSyncUrl('');
         setSyncWarning('Sync link is too large for reliable QR scanning. Use full file export/import instead.');
@@ -146,15 +155,18 @@ export default function ImportExport() {
   async function handleCopySyncLink() {
     setSyncStatus('');
     try {
-      const url = await buildSyncUrl();
+      const url = await buildSyncUrl(window.location.origin);
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setSyncUrl(url);
       setSyncWarning(url.length > MAX_SYNC_QR_URL_LENGTH
-        ? 'Link copied, but this payload may be too large for QR. Open the copied link directly on your computer.'
+        ? 'Link copied, but this payload may be too large for QR. Open the copied link directly on the target device.'
         : ''
       );
-      window.setTimeout(() => setCopied(false), 1600);
+      if (copiedTimeoutRef.current !== null) {
+        window.clearTimeout(copiedTimeoutRef.current);
+      }
+      copiedTimeoutRef.current = window.setTimeout(() => setCopied(false), 1600);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to copy sync link.';
       setSyncStatus(message);
