@@ -107,7 +107,7 @@ export default function SpotForm() {
     };
 
     await saveSpot(spot);
-    navigate('/spots');
+    navigate('/admin/spots');
   }
 
   return (
@@ -247,7 +247,7 @@ export default function SpotForm() {
             {isEdit ? 'Save' : 'Create'}
           </button>
           <button
-            onClick={() => navigate('/spots')}
+            onClick={() => navigate('/admin/spots')}
             className="flex-1 rounded-lg border border-gray-200 bg-white py-3 font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel

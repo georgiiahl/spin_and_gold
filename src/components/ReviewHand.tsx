@@ -34,24 +34,24 @@ const ACTION_LABELS: Record<Action, string> = {
 };
 
 const ACTION_BUTTON_CLASSES: Record<Action, string> = {
-  fold: 'bg-gray-500',
-  call: 'bg-green-600',
-  raise: 'bg-blue-600',
-  jam: 'bg-red-600',
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
 };
 
 const ACTION_BAR_COLORS: Record<Action, string> = {
-  fold: 'bg-gray-400',
-  call: 'bg-green-500',
-  raise: 'bg-blue-500',
-  jam: 'bg-red-500',
+  fold: 'bg-red-500',
+  call: 'bg-blue-500',
+  raise: 'bg-amber-500',
+  jam: 'bg-violet-500',
 };
 
 const ACTION_TEXT_CLASSES: Record<Action, string> = {
-  fold: 'text-gray-600',
-  call: 'text-green-600',
-  raise: 'text-blue-600',
-  jam: 'text-red-600',
+  fold: 'text-red-300',
+  call: 'text-blue-300',
+  raise: 'text-amber-300',
+  jam: 'text-violet-300',
 };
 
 type Phase = 'decide' | 'result';
@@ -210,16 +210,11 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                     <p className="mb-2 text-center text-xs text-gray-500">Try again:</p>
                   )}
                   <div className="flex gap-3" role="group" aria-label="Action buttons">
-                    {/* @ts-ignore */}
-                    {ACTIONS.filter((a) => {
-                      // Show all actions that exist in the range for this spot
-                      if (!rangeForSpot) return true;
-                      // Always show all 4 to not give away the answer
-                      return true;
-                    }).map((action) => (
+                    {ACTIONS.map((action) => (
                       <button
                         key={action}
                         onClick={() => handleActionPick(action)}
+                        aria-label={ACTION_LABELS[action]}
                         className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white active:scale-95`}
                       >
                         {ACTION_LABELS[action]}
@@ -229,6 +224,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                   {retryCount === 0 && (
                     <button
                       onClick={handleShowHint}
+                      aria-label="Show answer"
                       className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-600"
                     >
                       Show answer
@@ -266,6 +262,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                 {!isSelectedCorrect && (
                   <button
                     onClick={handleRetry}
+                    aria-label="Retry hand"
                     className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 active:scale-95"
                   >
                     Retry
@@ -273,12 +270,14 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                 )}
                 <button
                   onClick={() => setShowChart(!showChart)}
+                  aria-label={showChart ? 'Hide chart' : 'Show chart'}
                   className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 active:scale-95"
                 >
                   {showChart ? 'Hide chart' : 'Chart'}
                 </button>
                 <button
                   onClick={handleNext}
+                  aria-label="Next hand"
                   className="flex-1 rounded-xl bg-gray-900 py-3 text-sm font-bold text-white active:scale-95"
                 >
                   Next →

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
 import SpotList from '@/pages/SpotList';
 import SpotForm from '@/pages/SpotForm';
@@ -16,6 +16,7 @@ import Settings from '@/pages/Settings';
 import Forecast from '@/pages/Forecast';
 import ReviewPage from '@/pages/ReviewPage';
 import PracticeView from '@/pages/PracticeView';
+import About from '@/pages/About';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
 import { replaceAllData } from '@/storage/importExport';
@@ -25,6 +26,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { InstallBanner } from '@/components/InstallBanner';
 import Layout from '@/components/Layout';
+import AdminGuard from '@/components/AdminGuard';
 
 export default function App() {
   const navigate = useNavigate();
@@ -81,17 +83,10 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col">
+      <div className="mx-auto flex min-h-screen w-full flex-col">
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/spots" element={<SpotList />} />
-            <Route path="/spots/new" element={<SpotForm />} />
-            <Route path="/spots/:id/edit" element={<SpotForm />} />
-            <Route path="/spots/:id/range" element={<ChartEditor />} />
-            <Route path="/spots/:id/stats" element={<SpotStats />} />
-            <Route path="/spots/:id/study" element={<StudyMode />} />
-            <Route path="/study/:id" element={<StudyMode />} />
             <Route path="/train" element={<Trainer />} />
             <Route path="/train/:id" element={<Trainer />} />
             <Route path="/practice" element={<PracticeView />} />
@@ -99,11 +94,20 @@ export default function App() {
             <Route path="/visual/flash/:id" element={<FlashRange />} />
             <Route path="/visual/missing/:id" element={<MissingCells />} />
             <Route path="/visual/border/:id" element={<BorderTrainer />} />
-            <Route path="/stats" element={<GlobalStats />} />
-            <Route path="/import-export" element={<ImportExport />} />
+            <Route path="/study/:id" element={<StudyMode />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/forecast" element={<Forecast />} />
+            <Route path="/about" element={<About />} />
+            <Route element={<AdminGuard><Outlet /></AdminGuard>}>
+              <Route path="/admin/spots" element={<SpotList />} />
+              <Route path="/admin/spots/new" element={<SpotForm />} />
+              <Route path="/admin/spots/:id/edit" element={<SpotForm />} />
+              <Route path="/admin/spots/:id/range" element={<ChartEditor />} />
+              <Route path="/admin/spots/:id/stats" element={<SpotStats />} />
+              <Route path="/admin/stats" element={<GlobalStats />} />
+              <Route path="/admin/import-export" element={<ImportExport />} />
+              <Route path="/admin/forecast" element={<Forecast />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

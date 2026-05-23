@@ -81,8 +81,8 @@ export default function StudyMode() {
         <div><span className="font-semibold">Border:</span> neighbor hand has different primary action.</div>
       </div>
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
-        ← Back to spots
+      <Link to="/" className="block mt-6 text-sm text-slate-400 hover:text-gold-300">
+        ← Back
       </Link>
     </div>
   );

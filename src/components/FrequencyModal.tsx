@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Action, HandFrequencies } from '@/domain/types';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
 
 type Props = {
   hand: string;
@@ -63,9 +65,8 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-xs rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-xl">
-        <h3 className="text-lg font-bold mb-3">{hand}</h3>
+    <Modal open onClose={onClose} title={hand}>
+      <div className="w-full max-w-xs text-slate-100">
 
         {/* Quick pure-action buttons */}
         <div className="flex gap-2 mb-4">
@@ -73,7 +74,8 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
             <button
               key={a}
               onClick={() => setPure(a)}
-              className={`flex-1 py-1 rounded text-xs font-medium ${ACTION_SELECTED_CLASS[a]} hover:brightness-125`}
+              className={`flex-1 rounded py-1 text-xs font-medium ${ACTION_SELECTED_CLASS[a]} hover:brightness-125`}
+              aria-label={`Set ${ACTION_LABELS[a]} to 100 percent`}
             >
               {ACTION_LABELS[a]}
             </button>
@@ -84,10 +86,10 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
         <div
           className={`text-xs mb-3 px-2 py-1.5 rounded ${
             sum > 100
-              ? 'bg-red-50 text-red-600'
+             ? 'bg-red-500/20 text-red-300'
               : remaining === 0
-              ? 'bg-green-50 text-green-600'
-              : 'bg-gray-100 text-yellow-600'
+             ? 'bg-emerald-500/20 text-emerald-300'
+             : 'bg-slate-800 text-amber-300'
            }`}
         >
           {sum}/100 used ·{' '}
@@ -101,8 +103,8 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
             return (
               <div key={a}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-gray-700">{ACTION_LABELS[a]}</span>
-                  <span className="text-xs text-gray-500">{values[a]}%</span>
+                  <span className="text-xs font-medium text-slate-300">{ACTION_LABELS[a]}</span>
+                  <span className="text-xs text-slate-400">{values[a]}%</span>
                 </div>
                 <div className="flex gap-1">
                   {QUARTER_STEPS.map((step) => {
@@ -113,12 +115,13 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
                         key={step}
                         onClick={() => handleSet(a, step)}
                         disabled={wouldExceed}
+                        aria-label={`Set ${ACTION_LABELS[a]} to ${step} percent`}
                         className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
                           isSelected
-                            ? ACTION_SELECTED_CLASS[a]
-                            : wouldExceed
-                             ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                             ? ACTION_SELECTED_CLASS[a]
+                          : wouldExceed
+                           ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+                             : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                         }`}
                       >
                         {step}
@@ -131,24 +134,25 @@ export default function FrequencyModal({ hand, frequencies, onSave, onClose }: P
           })}
         </div>
 
-        <div className="flex gap-2 mt-4">
-          <button
+        <div className="mt-4 flex gap-2">
+          <Button
             onClick={handleSave}
             disabled={!isSumValid}
-            className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-               isSumValid ? 'bg-blue-600 text-white hover:bg-blue-500' : 'cursor-not-allowed bg-gray-100 text-gray-400'
-             }`}
+            className="flex-1"
+            aria-label="Save frequencies"
           >
             Save
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-gray-200 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50"
+            variant="secondary"
+            className="flex-1"
+            aria-label="Cancel frequency editor"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

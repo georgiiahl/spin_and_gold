@@ -74,7 +74,7 @@ export default function BorderTrainer() {
     return (
       <div>
         <p className="text-yellow-600">No border hands found. Fill the chart first.</p>
-        <Link to={`/spots/${id}/range`} className="mt-2 block text-sm text-blue-600">Open Chart Editor</Link>
+        <Link to={`/admin/spots/${id}/range`} className="mt-2 block text-sm text-gold-300">Open Chart Editor</Link>
       </div>
     );
   }
@@ -130,7 +130,7 @@ export default function BorderTrainer() {
         )}
       </div>
 
-      <Link to="/spots" className="block mt-4 text-sm text-gray-500 hover:text-gray-900 text-center">
+      <Link to="/" className="block mt-4 text-center text-sm text-slate-400 hover:text-gold-300">
         \u2190 Back
       </Link>
     </div>

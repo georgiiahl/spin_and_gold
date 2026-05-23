@@ -4,6 +4,7 @@ import RangeMatrix from '@/components/RangeMatrix';
 import { Spot, SpotRange, normalizeSpotCategory } from '@/domain/types';
 import { getRange } from '@/storage/ranges';
 import { getSpotsByCategory } from '@/storage/spots';
+import Card from '@/components/ui/Card';
 
 type SpotWithRange = {
   spot: Spot;
@@ -53,14 +54,14 @@ export default function PracticeView() {
   }, [category]);
 
   if (loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center text-gray-400">Loading...</div>;
+    return <div className="flex min-h-[40vh] items-center justify-center text-slate-400">Loading...</div>;
   }
 
   if (!category) {
     return (
       <div className="mx-auto flex min-h-[40vh] w-full max-w-4xl flex-col items-center justify-center gap-2">
-        <p className="text-red-600">Category not provided.</p>
-        <Link to="/" className="text-sm text-blue-600">Back to dashboard</Link>
+        <p className="text-red-400">Category not provided.</p>
+        <Link to="/" className="text-sm text-gold-300">Back to dashboard</Link>
       </div>
     );
   }
@@ -68,8 +69,8 @@ export default function PracticeView() {
   if (spotRanges.length === 0) {
     return (
       <div className="mx-auto flex min-h-[40vh] w-full max-w-4xl flex-col items-center justify-center gap-2">
-        <p className="text-yellow-600">No ranges found for this category.</p>
-        <Link to="/" className="text-sm text-blue-600">Back to dashboard</Link>
+        <p className="text-amber-300">No ranges found for this category.</p>
+        <Link to="/" className="text-sm text-gold-300">Back to dashboard</Link>
       </div>
     );
   }
@@ -83,15 +84,24 @@ export default function PracticeView() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {spotRanges.map(({ spot, range }) => (
-          <button
+          <Card
             key={spot.id}
-            type="button"
+            role="button"
+            tabIndex={0}
+            aria-label={`Start training ${spot.title}`}
             onClick={() => navigate(`/train/${spot.id}`)}
-            className="rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm transition hover:bg-gray-50"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navigate(`/train/${spot.id}`);
+              }
+            }}
+            className="cursor-pointer p-3 text-left"
+            hover
           >
             <div className="mb-2">
-              <div className="text-sm font-semibold text-gray-900">{spot.effectiveStackBb}bb</div>
-              <div className="truncate text-xs text-gray-500">{spot.title}</div>
+              <div className="text-sm font-semibold text-slate-100">{spot.effectiveStackBb}bb</div>
+              <div className="truncate text-xs text-slate-400">{spot.title}</div>
             </div>
             <div className="mx-auto w-[170px] max-w-full">
               <RangeMatrix
@@ -102,7 +112,7 @@ export default function PracticeView() {
                 readOnly
               />
             </div>
-          </button>
+          </Card>
         ))}
       </div>
     </div>

@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.10",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "idb": "^8.0.0",
+    "lucide-react": "^1.16.0",
     "lz-string": "^1.5.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",

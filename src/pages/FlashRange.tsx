@@ -166,7 +166,7 @@ export default function FlashRange() {
         </div>
       )}
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900 text-center">
+      <Link to="/" className="block mt-6 text-center text-sm text-slate-400 hover:text-gold-300">
         \u2190 Back
       </Link>
     </div>

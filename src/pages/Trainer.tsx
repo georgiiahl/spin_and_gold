@@ -39,22 +39,22 @@ const ACTION_LABELS: Record<Action, string> = {
   jam: 'Jam',
 };
 const ACTION_BUTTON_CLASSES: Record<Action, string> = {
-  fold: 'bg-gray-500',
-  call: 'bg-green-600',
-  raise: 'bg-blue-600',
-  jam: 'bg-red-600',
+  fold: 'bg-fold',
+  call: 'bg-call',
+  raise: 'bg-raise',
+  jam: 'bg-jam',
 };
 const ACTION_TEXT_CLASSES: Record<Action, string> = {
-  fold: 'text-gray-600',
-  call: 'text-green-600',
-  raise: 'text-blue-600',
-  jam: 'text-red-600',
+  fold: 'text-red-300',
+  call: 'text-blue-300',
+  raise: 'text-amber-300',
+  jam: 'text-violet-300',
 };
 const ACTION_BAR_COLORS: Record<Action, string> = {
-  fold: 'bg-gray-400',
-  call: 'bg-green-500',
-  raise: 'bg-blue-500',
-  jam: 'bg-red-500',
+  fold: 'bg-red-500',
+  call: 'bg-blue-500',
+  raise: 'bg-amber-500',
+  jam: 'bg-violet-500',
 };
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
@@ -673,8 +673,8 @@ export default function Trainer() {
   if (!currentSpot) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2">
-        <p className="text-red-600">{category ? 'Category not found.' : 'Spot not found.'}</p>
-        <Link to="/spots" className="text-sm text-blue-600">Back to spots</Link>
+        <p className="text-red-400">{category ? 'Category not found.' : 'Spot not found.'}</p>
+        <Link to="/" className="text-sm text-gold-300">Back to dashboard</Link>
       </div>
     );
   }
@@ -682,8 +682,8 @@ export default function Trainer() {
   if (cards.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2">
-        <p className="text-yellow-600">No hands in range. Fill the chart first.</p>
-        <Link to={`/spots/${currentSpot.id}/range`} className="text-sm text-blue-600">Open Chart Editor</Link>
+        <p className="text-amber-300">No hands in range. Fill the chart first.</p>
+        <Link to={`/admin/spots/${currentSpot.id}/range`} className="text-sm text-gold-300">Open Chart Editor</Link>
       </div>
     );
   }
@@ -762,7 +762,7 @@ export default function Trainer() {
                   <button
                     key={action}
                     onClick={() => handleAnswer(action)}
-                    aria-label={`${ACTION_LABELS[action]} action`}
+                    aria-label={ACTION_LABELS[action]}
                     className={`flex-1 rounded-xl ${ACTION_BUTTON_CLASSES[action]} py-4 text-base font-bold text-white active:scale-95`}
                   >
                     {ACTION_LABELS[action]}
@@ -787,6 +787,7 @@ export default function Trainer() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => adjustMixAllocation(action, -1)}
+                            aria-label={`Decrease ${ACTION_LABELS[action]} allocation`}
                             className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
                           >
                             −
@@ -796,6 +797,7 @@ export default function Trainer() {
                           </span>
                           <button
                             onClick={() => adjustMixAllocation(action, 1)}
+                            aria-label={`Increase ${ACTION_LABELS[action]} allocation`}
                             className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
                           >
                             +
@@ -811,6 +813,7 @@ export default function Trainer() {
                     <button
                       onClick={handleBalancedAnswer}
                       disabled={!isMixTotalValid}
+                      aria-label="Confirm mix allocation"
                       className="rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
                     >
                       Confirm
@@ -856,6 +859,7 @@ export default function Trainer() {
 
               <button
                 onClick={pickNext}
+                aria-label="Next hand"
                 className="w-full rounded-xl bg-gray-900 py-3.5 text-base font-bold text-white active:scale-95"
               >
                 Next →
@@ -867,7 +871,7 @@ export default function Trainer() {
 
       {/* Bottom bar — live progress */}
       <div className="flex items-center justify-between py-2">
-        <Link to={category ? '/' : '/spots'} className="text-xs text-gray-400">← End</Link>
+        <Link to="/" className="text-xs text-gray-400">← End</Link>
         <div className="flex gap-2 text-[10px]">
           <span className="text-red-500">🔴 {problemCount}</span>
           <span className="text-amber-500">🟡 {learningCount}</span>

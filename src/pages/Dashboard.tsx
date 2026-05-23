@@ -5,6 +5,7 @@ import { getAllSessions } from '@/storage/sessions';
 import { getAllCards } from '@/storage/cards';
 import { SessionAnswer, Spot, TrainerCard, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
 import { buildCategoryProgress } from '@/domain/progress';
+import Card from '@/components/ui/Card';
 
 export default function Dashboard() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -99,22 +100,22 @@ export default function Dashboard() {
   return (
     <div className="mx-auto w-full max-w-4xl">
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <div className="text-xs text-gray-500">Total spots</div>
+        <Card>
+          <div className="text-xs text-slate-400">Total spots</div>
           <div className="text-lg font-semibold">{spots.length}</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <div className="text-xs text-gray-500">Trained today</div>
+        </Card>
+        <Card>
+          <div className="text-xs text-slate-400">Trained today</div>
           <div className="text-lg font-semibold">{todaySessions.length}</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <div className="text-xs text-gray-500">Accuracy today</div>
+        </Card>
+        <Card>
+          <div className="text-xs text-slate-400">Accuracy today</div>
           <div className="text-lg font-semibold">{accuracyToday}%</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <div className="text-xs text-gray-500">Due cards</div>
+        </Card>
+        <Card>
+          <div className="text-xs text-slate-400">Due cards</div>
           <div className="text-lg font-semibold">{dueCardsCount}</div>
-        </div>
+        </Card>
       </div>
 
       {categoryCards.length > 0 && (
@@ -130,24 +131,25 @@ export default function Dashboard() {
               <Link
                 key={category.name}
                 to={`/train?category=${encodeURIComponent(category.name)}`}
-                className="flex min-h-[56px] flex-col justify-center rounded-lg bg-blue-600 p-4 text-white transition hover:bg-blue-500"
+                className="flex min-h-[56px] flex-col justify-center rounded-lg bg-gradient-to-r from-gold-500 to-amber-400 p-4 text-slate-950 transition hover:brightness-105"
+                aria-label={`Train category ${category.name}`}
               >
                   <div className="font-semibold">{category.name}</div>
-                <div className="mb-2 text-sm text-blue-100">
+                <div className="mb-2 text-sm text-slate-900/80">
                   {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
                   {category.dueCards === 1 ? '' : 's'}
                 </div>
-                <div className="mb-1 flex items-center justify-between text-xs text-blue-100">
+                <div className="mb-1 flex items-center justify-between text-xs text-slate-900/80">
                   <span>Level {category.level}</span>
                   <span>Recent accuracy {category.recentAccuracyPercent}%</span>
                 </div>
-                <div className="h-2 rounded-full bg-blue-800/50">
+                <div className="h-2 rounded-full bg-slate-900/20">
                   <div
                     className="h-2 rounded-full bg-emerald-300"
                     style={{ width: `${category.maturePercent}%` }}
                   />
                 </div>
-                <div className="mt-1 text-xs text-blue-100">{category.maturePercent}% mature cards</div>
+                <div className="mt-1 text-xs text-slate-900/80">{category.maturePercent}% mature cards</div>
               </Link>
             ))}
           </div>
@@ -155,53 +157,43 @@ export default function Dashboard() {
       )}
 
       {categoryCards.length === 0 && (
-        <div className="mb-4 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+        <div className="mb-4 rounded-lg border border-dashed border-slate-600 bg-slate-900/70 p-4 text-sm text-slate-400">
           Create your first spot category to start training from the dashboard.
         </div>
       )}
 
       <div className="flex flex-col gap-3">
         <Link
-          to="/spots"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          to="/practice"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-slate-700 bg-slate-900/70 p-4 transition hover:bg-slate-800"
+          aria-label="Open practice page"
         >
-          <div className="font-semibold">Spots</div>
-          <div className="text-sm text-gray-500">Manage your preflop spots</div>
+          <div className="font-semibold">Practice</div>
+          <div className="text-sm text-slate-400">Train by category and compare range visuals</div>
         </Link>
         <Link
-          to="/forecast"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          to="/train"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-slate-700 bg-slate-900/70 p-4 transition hover:bg-slate-800"
+          aria-label="Open trainer"
         >
-          <div className="font-semibold">Forecast</div>
-          <div className="text-sm text-gray-500">Workload forecast and pool breakdown</div>
-        </Link>
-        <Link
-          to="/stats"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
-        >
-          <div className="font-semibold">Stats</div>
-          <div className="text-sm text-gray-500">Review training performance</div>
-        </Link>
-        <Link
-          to="/settings"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
-        >
-          <div className="font-semibold">Settings</div>
-          <div className="text-sm text-gray-500">Trainer and visual preferences</div>
-        </Link>
-        <Link
-          to="/import-export"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
-        >
-          <div className="font-semibold">Import / Export</div>
-          <div className="text-sm text-gray-500">Backup and restore your data</div>
+          <div className="font-semibold">Quick Train</div>
+          <div className="text-sm text-slate-400">Start fast random training session</div>
         </Link>
         <Link
           to="/review"
-          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-slate-700 bg-slate-900/70 p-4 transition hover:bg-slate-800"
+          aria-label="Open review mode"
         >
           <div className="font-semibold">Review Mode</div>
-          <div className="text-sm text-gray-500">Import hand history and review decisions</div>
+          <div className="text-sm text-slate-400">Import hand history and review decisions</div>
+        </Link>
+        <Link
+          to="/settings"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-slate-700 bg-slate-900/70 p-4 transition hover:bg-slate-800"
+          aria-label="Open settings"
+        >
+          <div className="font-semibold">Settings</div>
+          <div className="text-sm text-slate-400">Trainer and visual preferences</div>
         </Link>
       </div>
     </div>

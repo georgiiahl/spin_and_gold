@@ -40,7 +40,7 @@ export default function SpotStats() {
     return (
       <div>
         <p className="text-red-600">Spot not found.</p>
-        <Link to="/spots" className="text-blue-400 text-sm">Back to spots</Link>
+        <Link to="/admin/spots" className="text-gold-300 text-sm">Back to spots</Link>
       </div>
     );
   }
@@ -125,7 +125,7 @@ export default function SpotStats() {
         </section>
       </div>
 
-      <Link to="/spots" className="block mt-6 text-sm text-gray-500 hover:text-gray-900">
+      <Link to="/admin/spots" className="block mt-6 text-sm text-slate-400 hover:text-gold-300">
         ← Back to spots
       </Link>
     </div>

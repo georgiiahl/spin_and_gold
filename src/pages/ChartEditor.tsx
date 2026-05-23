@@ -6,6 +6,8 @@ import { getSpot } from '@/storage/spots';
 import { getRange, saveRange } from '@/storage/ranges';
 import RangeMatrix from '@/components/RangeMatrix';
 import FrequencyModal from '@/components/FrequencyModal';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const ACTION_LABELS: Record<Action, string> = {
@@ -71,37 +73,34 @@ export default function ChartEditor() {
   }).length;
 
   if (!spot) {
-    return <div className="text-gray-500">Loading...</div>;
+    return <div className="text-slate-400">Loading...</div>;
   }
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      {/* Header */}
-      <div className="mb-3">
+      <Card className="mb-3">
         <h1 className="text-lg font-bold">{spot.title}</h1>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-slate-400">
           {spot.format} · {spot.effectiveStackBb}bb · {spot.actingPosition}
         </div>
-      </div>
+      </Card>
 
       {/* Mode toggle */}
-      <div className="flex gap-2 mb-3">
-        <button
+      <div className="mb-3 flex gap-2">
+        <Button
           onClick={() => setMode('simple')}
-          className={`px-3 py-1 rounded text-sm font-medium ${
-            mode === 'simple' ? 'bg-blue-600 text-white' : 'bg-gray-50 border border-gray-200 text-gray-700'
-          }`}
+          variant={mode === 'simple' ? 'primary' : 'secondary'}
+          aria-label="Simple mode"
         >
           Simple
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setMode('frequency')}
-          className={`px-3 py-1 rounded text-sm font-medium ${
-            mode === 'frequency' ? 'bg-blue-600 text-white' : 'bg-gray-50 border border-gray-200 text-gray-700'
-          }`}
+          variant={mode === 'frequency' ? 'primary' : 'secondary'}
+          aria-label="Frequency mode"
         >
           Frequency
-        </button>
+        </Button>
       </div>
 
       {/* Action palette (simple mode) */}
@@ -111,8 +110,9 @@ export default function ChartEditor() {
             <button
               key={a}
               onClick={() => setActiveAction(a)}
-               className={`flex-1 rounded py-2 text-sm font-medium text-white ${ACTION_BUTTON_CLASSES[a]} ${
-                 activeAction === a ? 'ring-2 ring-white' : 'opacity-60'
+              aria-label={ACTION_LABELS[a]}
+               className={`flex-1 rounded py-2 text-sm font-medium text-white transition ${ACTION_BUTTON_CLASSES[a]} ${
+                 activeAction === a ? 'ring-2 ring-gold-300' : 'opacity-70'
                }`}
             >
               {ACTION_LABELS[a]}
@@ -132,21 +132,20 @@ export default function ChartEditor() {
 
       {/* Footer */}
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-500">{filled}/169 filled</span>
+        <span className="text-xs text-slate-400">{filled}/169 filled</span>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={handleSave}
-            className={`px-4 py-2 rounded-lg font-medium text-sm ${
-              saved ? 'bg-green-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
-            }`}
+            variant={saved ? 'secondary' : 'primary'}
+            aria-label="Save chart"
           >
             {saved ? '✓ Saved' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {filled < 169 && filled > 0 && (
-        <div className="mt-2 text-xs text-yellow-500">
+        <div className="mt-2 text-xs text-amber-300">
           ⚠ {169 - filled} hands not filled. Complete before training.
         </div>
       )}
@@ -161,7 +160,7 @@ export default function ChartEditor() {
         />
       )}
 
-      <Link to="/spots" className="block mt-4 text-sm text-gray-500 hover:text-gray-900">
+      <Link to="/admin/spots" className="mt-4 block text-sm text-slate-400 hover:text-gold-300">
         ← Back to spots
       </Link>
     </div>

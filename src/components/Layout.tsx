@@ -1,43 +1,34 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 export default function Layout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const showBackButton = location.pathname !== '/';
-
-  function handleBack() {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/');
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header
-        className="sticky top-0 z-20 border-b border-gray-200 bg-white"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-slate-900 focus:px-3 focus:py-2"
       >
-        <div className="flex h-12 items-center px-4">
-          <div className="flex items-center gap-2">
-            {showBackButton && (
-              <button
-                type="button"
-                onClick={handleBack}
-                aria-label="Go back"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-lg text-gray-700 hover:bg-gray-100"
-              >
-                ←
-              </button>
-            )}
-            <span className="text-sm font-semibold text-gray-900">S&G Trainer</span>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 px-4 py-4 pb-8">
-        <Outlet />
+        Skip to content
+      </a>
+      <Header />
+      <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-8" tabIndex={-1}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
+      <Footer />
     </div>
   );
 }

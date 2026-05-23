@@ -1,18 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  @apply min-h-screen bg-gray-50 text-gray-900;
+  @apply min-h-screen bg-slate-950 text-slate-100 font-sans;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   transition: background-color 250ms ease;
 }
 
 @layer base {
+  * {
+    @apply border-slate-700;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
   button,
   input,
   select,
   textarea {
     min-height: 44px;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-gold-400 ring-offset-2 ring-offset-slate-900;
   }
 }
 
