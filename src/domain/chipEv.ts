@@ -15,6 +15,7 @@ export type ChipEvSummary = {
   totalHands: number;
   chipEvPerTournament: number;
   chipEvBbPer100: number;
+  luckDeltaChips: number;
   allInHandsCount: number;
   adjustedHands: number;
 };
@@ -59,6 +60,7 @@ export function buildHandChipEvResult(hand: ParsedHand): HandChipEvResult {
 export function summarizeChipEv(results: SummaryInput[]): ChipEvSummary {
   const totalAdjustedChips = results.reduce((sum, hand) => sum + hand.netChipsAdjusted, 0);
   const totalAdjustedBb = results.reduce((sum, hand) => sum + (hand.bbSize > 0 ? hand.netChipsAdjusted / hand.bbSize : 0), 0);
+  const totalLuckDelta = results.reduce((sum, hand) => sum + (hand.netChipsActual - hand.netChipsAdjusted), 0);
   const tournamentIds = new Set(results.map((hand) => hand.tournamentId).filter(Boolean));
 
   return {
@@ -66,6 +68,7 @@ export function summarizeChipEv(results: SummaryInput[]): ChipEvSummary {
     totalHands: results.length,
     chipEvPerTournament: tournamentIds.size > 0 ? roundNumber(totalAdjustedChips / tournamentIds.size) : 0,
     chipEvBbPer100: results.length > 0 ? roundNumber((totalAdjustedBb / results.length) * 100) : 0,
+    luckDeltaChips: roundNumber(totalLuckDelta),
     allInHandsCount: results.filter((hand) => hand.wasAllInBeforeRiver).length,
     adjustedHands: results.filter((hand) => hand.isAllInAdjusted).length,
   };
