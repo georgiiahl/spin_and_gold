@@ -86,13 +86,13 @@ export default function PokerTable({
     <div className="relative mx-auto aspect-square w-full max-w-[340px]">
       {/* Level label */}
       {levelLabel && (
-        <div className="absolute left-1/2 top-1 -translate-x-1/2 rounded-full bg-gray-800/80 px-2.5 py-0.5 text-[10px] font-medium text-gray-200">
+        <div className="absolute left-1/2 top-1 -translate-x-1/2 rounded-full bg-slate-800/90 px-2.5 py-0.5 text-[10px] font-medium text-slate-200">
           {levelLabel}
         </div>
       )}
 
       {/* Table circle */}
-      <div className="absolute inset-[14%] rounded-full border-2 border-gray-300" />
+      <div className="absolute inset-[14%] rounded-full border-2 border-slate-600" />
 
       {/* Cards in center */}
       {cards && (
@@ -126,19 +126,19 @@ export default function PokerTable({
                 isActing
                   ? 'border-blue-500 bg-blue-500 shadow-md shadow-blue-200'
                   : detail?.isHero
-                    ? 'border-blue-300 bg-blue-50'
-                    : 'border-gray-300 bg-white'
+                   ? 'border-blue-400 bg-slate-800'
+                   : 'border-slate-600 bg-slate-900'
               } ${highlightPosition && isActing ? 'ring-3 ring-blue-300 ring-offset-2' : ''}`}
               style={{ left: `${seat.x}%`, top: `${seat.y}%` }}
             >
-              <span className={`text-xs font-bold ${isActing ? 'text-white' : 'text-gray-700'}`}>
+              <span className={`text-xs font-bold ${isActing ? 'text-white' : 'text-slate-100'}`}>
                 {pos}
               </span>
               {detail ? (
                 <>
                   <span
                     className={`max-w-[56px] truncate text-[9px] leading-tight ${
-                      isActing ? 'text-blue-100' : 'text-gray-500'
+                      isActing ? 'text-blue-100' : 'text-slate-400'
                     }`}
                   >
                     {detail.name}
@@ -149,7 +149,7 @@ export default function PokerTable({
                         ? 'text-amber-300'
                         : isActing
                           ? 'text-blue-100'
-                          : 'text-gray-400'
+                          : 'text-slate-400'
                     }`}
                   >
                     {detail.stackBb}bb
@@ -162,7 +162,7 @@ export default function PokerTable({
                       ? 'text-amber-300'
                       : isActing
                         ? 'text-blue-100'
-                        : 'text-gray-400'
+                        : 'text-slate-400'
                   }`}
                 >
                   {effectiveStackBb}bb
@@ -173,7 +173,7 @@ export default function PokerTable({
             {/* Dealer button */}
             {seat.dealerX != null && pos === (format === '3max' ? 'BTN' : 'SB') && (
               <div
-                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-white shadow-sm"
+                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-slate-950 shadow-sm"
                 style={{ left: `${seat.dealerX}%`, top: `${seat.dealerY}%` }}
               >
                 D

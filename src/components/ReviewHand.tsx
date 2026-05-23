@@ -86,7 +86,8 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
   }, [selectedAction, verdict]);
 
   // What hero actually played in the hand
-  const heroPlayedAction = hand.heroAction?.action ?? null;
+  const actualHeroAction = hand.heroAction?.action ?? null;
+  const heroPlayedAction = phase === 'result' ? actualHeroAction : null;
 
   function handleActionPick(action: Action) {
     if (phase !== 'decide') return;
@@ -113,7 +114,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
       matchedSpotId: matched.matchedSpotId,
       hadChart: Boolean(verdict),
       isCorrect: isSelectedCorrect,
-      heroAction: heroPlayedAction,
+      heroAction: actualHeroAction,
       selectedAction,
       errorType: verdict && !isSelectedCorrect ? 'wrong_action' : null,
     });
@@ -130,11 +131,11 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col pb-[env(safe-area-inset-bottom)]">
       {/* Progress bar */}
       <div className="py-2">
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+        <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
           <span>{index + 1}/{total}</span>
           <span>{matched.spotType.replace('_', ' ')} · {matched.effectiveStackBb}bb</span>
         </div>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-gray-200">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-slate-700">
           <div
             className="h-full rounded-full bg-blue-500 transition-all duration-300"
             style={{ width: `${progressPct}%` }}
@@ -156,7 +157,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
 
         {/* Frequency bar — revealed only after answer */}
         <div className="mt-4 w-full">
-          <div className="relative h-6 w-full overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200">
+          <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 ring-1 ring-slate-700">
             {verdict && phase === 'result' && (
               <div className="absolute inset-0 flex">
                 {ACTIONS.filter((a) => verdict.frequencies[a] > 0).map((a) => (
@@ -195,11 +196,11 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
           {phase === 'decide' && (
             <div className="flex h-full flex-col justify-center">
               {!verdict ? (
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-center text-sm text-yellow-800">
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-center text-sm text-amber-200">
                   No chart for this spot. 
                   <button
                     onClick={handleNext}
-                    className="ml-2 font-semibold text-yellow-900 underline"
+                    className="ml-2 font-semibold text-amber-300 underline"
                   >
                     Skip →
                   </button>
@@ -207,7 +208,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
               ) : (
                 <>
                   {retryCount > 0 && (
-                    <p className="mb-2 text-center text-xs text-gray-500">Try again:</p>
+                    <p className="mb-2 text-center text-xs text-slate-400">Try again:</p>
                   )}
                   <div className="flex gap-3" role="group" aria-label="Action buttons">
                     {ACTIONS.map((action) => (
@@ -225,7 +226,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                     <button
                       onClick={handleShowHint}
                       aria-label="Show answer"
-                      className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-600"
+                      className="mt-3 w-full text-center text-xs text-slate-400 hover:text-slate-200"
                     >
                       Show answer
                     </button>
@@ -244,7 +245,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                   {isSelectedCorrect ? '✓' : '✗'}
                 </span>
                 {selectedAction && (
-                  <span className={`text-sm font-semibold ${isSelectedCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                  <span className={`text-sm font-semibold ${isSelectedCorrect ? 'text-green-300' : 'text-red-300'}`}>
                     {ACTION_LABELS[selectedAction]}
                   </span>
                 )}
@@ -252,7 +253,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
 
               {/* What hero actually played vs what we picked */}
               {heroPlayedAction && heroPlayedAction !== selectedAction && (
-                <div className="text-center text-xs text-gray-500">
+                <div className="text-center text-xs text-slate-400">
                   In game Hero played: <span className="font-semibold">{ACTION_LABELS[heroPlayedAction]}</span>
                 </div>
               )}
@@ -263,7 +264,7 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                   <button
                     onClick={handleRetry}
                     aria-label="Retry hand"
-                    className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 active:scale-95"
+                    className="flex-1 rounded-xl border border-slate-700 bg-slate-800 py-3 text-sm font-semibold text-slate-100 active:scale-95"
                   >
                     Retry
                   </button>
@@ -271,14 +272,14 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
                 <button
                   onClick={() => setShowChart(!showChart)}
                   aria-label={showChart ? 'Hide chart' : 'Show chart'}
-                  className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 active:scale-95"
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-800 py-3 text-sm font-semibold text-slate-100 active:scale-95"
                 >
                   {showChart ? 'Hide chart' : 'Chart'}
                 </button>
                 <button
                   onClick={handleNext}
                   aria-label="Next hand"
-                  className="flex-1 rounded-xl bg-gray-900 py-3 text-sm font-bold text-white active:scale-95"
+                  className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-bold text-slate-950 active:scale-95"
                 >
                   Next →
                 </button>
@@ -290,8 +291,8 @@ export default function ReviewHand({ matched, verdict, rangeForSpot, index, tota
 
       {/* Chart modal — shown inline below */}
       {showChart && rangeForSpot && (
-        <div className="mt-2 rounded-xl border border-gray-200 bg-white p-3">
-          <div className="text-xs text-gray-500 mb-2">Full range chart for this spot</div>
+        <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+          <div className="mb-2 text-xs text-slate-400">Full range chart for this spot</div>
           <RangeMatrix
             range={rangeForSpot}
             onCellAction={() => {}}

@@ -80,6 +80,11 @@ type FeedbackState = {
   confusedWithSpot?: Spot;
 } | null;
 
+type TrainingCategory = {
+  name: string;
+  spotCount: number;
+};
+
 function memoryNeedsPersist(previous: TrainerCard, next: TrainerCard): boolean {
   return previous.memory.difficulty !== next.memory.difficulty
     || previous.memory.stability !== next.memory.stability
@@ -104,6 +109,7 @@ export default function Trainer() {
   const [sessionCount, setSessionCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<TrainingCategory[]>([]);
   const [trainingCategoryLabel, setTrainingCategoryLabel] = useState('Category');
   const [highlightStack, setHighlightStack] = useState(false);
   const [highlightPosition, setHighlightPosition] = useState(false);
@@ -188,6 +194,22 @@ export default function Trainer() {
         ? await getSpotsByCategory(category)
         : [];
 
+    if (!id && !category) {
+      const allSpots = await getAllSpots();
+      const grouped = new Map<string, number>();
+      for (const spot of allSpots) {
+        const categoryName = getSpotCategoryLabel(spot.category);
+        grouped.set(categoryName, (grouped.get(categoryName) ?? 0) + 1);
+      }
+      setCategories(
+        Array.from(grouped.entries())
+          .map(([name, spotCount]) => ({ name, spotCount }))
+          .sort((a, b) => b.spotCount - a.spotCount || a.name.localeCompare(b.name))
+      );
+      setLoading(false);
+      return;
+    }
+
     if (selectedSpots.length === 0) {
       setLoading(false);
       return;
@@ -202,6 +224,7 @@ export default function Trainer() {
 
     const categoryLabel = category ?? getSpotCategoryLabel(selectedSpots[0].category);
     setTrainingCategoryLabel(categoryLabel);
+    setCategories([]);
     setSpots(selectedSpots);
 
     const allCards: TrainerCard[] = [];
@@ -668,7 +691,39 @@ export default function Trainer() {
   // --- RENDER ---
 
   if (loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center text-gray-400">Loading...</div>;
+    return <div className="flex min-h-[40vh] items-center justify-center text-slate-400">Loading...</div>;
+  }
+
+  if (!id && !category) {
+    return (
+      <div className="mx-auto w-full max-w-4xl space-y-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-100">Quick Train</h1>
+          <div className="text-sm text-slate-400">Choose a category to start training.</div>
+        </div>
+        {categories.length === 0 ? (
+          <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-400">
+            No categories found. Add spots first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {categories.map((entry) => (
+              <Link
+                key={entry.name}
+                to={`/train?category=${encodeURIComponent(entry.name)}`}
+                className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 transition hover:bg-slate-800"
+              >
+                <div className="font-semibold text-slate-100">{entry.name}</div>
+                <div className="text-sm text-slate-400">
+                  {entry.spotCount} spot{entry.spotCount === 1 ? '' : 's'}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+        <Link to="/" className="inline-block text-sm text-gold-300">Back to dashboard</Link>
+      </div>
+    );
   }
 
   if (!currentSpot) {
@@ -705,10 +760,10 @@ export default function Trainer() {
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col pb-[env(safe-area-inset-bottom)]">
       {/* Top bar */}
       <div className="flex items-center justify-between py-2">
-        <span className="max-w-[60%] truncate text-xs text-gray-400">
+        <span className="max-w-[60%] truncate text-xs text-slate-400">
           {trainingCategoryLabel}
         </span>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-slate-400">
           {correctCount}/{sessionCount} · {accuracy}%
         </span>
       </div>
@@ -727,7 +782,7 @@ export default function Trainer() {
 
         {/* Frequency bar — always present */}
         <div className="mt-4 w-full">
-          <div className="relative h-6 w-full overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200">
+          <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 ring-1 ring-slate-700">
             {currentCard && (
               <div className="absolute inset-0 flex">
                 {ACTIONS.filter((a) => currentCard.frequencies[a] > 0).map((a) => (
@@ -784,7 +839,7 @@ export default function Trainer() {
                 )}
               </div>
               {showMixAllocation && settings.showMixButton && isMixedHand && (
-                <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50 p-3">
+                <div className="mt-3 rounded-xl border border-slate-700 bg-slate-800/70 p-3">
                   <div className="space-y-2">
                     {mixedActions.map((action) => (
                       <div key={action} className="flex items-center justify-between gap-3">
@@ -793,17 +848,17 @@ export default function Trainer() {
                           <button
                             onClick={() => adjustMixAllocation(action, -1)}
                             aria-label={`Decrease ${ACTION_LABELS[action]} allocation`}
-                            className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
+                            className="h-7 w-7 rounded-md border border-slate-600 bg-slate-800 text-sm font-bold text-slate-100"
                           >
                             −
                           </button>
-                          <span className="w-12 text-center text-sm font-semibold text-gray-700">
+                          <span className="w-12 text-center text-sm font-semibold text-slate-200">
                             {mixAllocations[action] ?? 0}%
                           </span>
                           <button
                             onClick={() => adjustMixAllocation(action, 1)}
                             aria-label={`Increase ${ACTION_LABELS[action]} allocation`}
-                            className="h-7 w-7 rounded-md border border-gray-300 bg-white text-sm font-bold text-gray-700"
+                            className="h-7 w-7 rounded-md border border-slate-600 bg-slate-800 text-sm font-bold text-slate-100"
                           >
                             +
                           </button>
@@ -812,7 +867,7 @@ export default function Trainer() {
                     ))}
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className={`text-xs font-medium ${isMixTotalValid ? 'text-green-700' : 'text-red-600'}`}>
+                    <span className={`text-xs font-medium ${isMixTotalValid ? 'text-green-300' : 'text-red-400'}`}>
                       Total: {mixAllocationTotal}%
                     </span>
                     <button
@@ -840,24 +895,24 @@ export default function Trainer() {
                   {feedback.isCorrect ? '✓' : feedback.kind === 'depth_confusion' ? '⚠' : '✗'}
                 </span>
                 {feedback.kind === 'depth_confusion' && feedback.confusedWithSpot && (
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+                  <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-500/40">
                     {ACTION_LABELS[feedback.selectedAction]} → {feedback.confusedWithSpot.effectiveStackBb}bb
                   </span>
                 )}
               </div>
               {feedback.balancedAnswer && (
-                <div className="space-y-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+                <div className="space-y-1 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs">
                   {ACTIONS.filter((action) => feedback.frequencies[action] > 0).map((action) => (
                     <div key={action} className="flex items-center justify-between gap-4">
                       <span className={`${ACTION_TEXT_CLASSES[action]} font-medium`}>{ACTION_LABELS[action]}</span>
-                      <span className="text-gray-600">
+                      <span className="text-slate-400">
                         You {feedback.balancedAnswer?.allocations[action] ?? 0}% ·
                         {' '}Actual {(feedback.frequencies[action] * 100).toFixed(0)}%
                       </span>
                     </div>
                   ))}
                   {typeof feedback.balancedScore === 'number' && (
-                    <div className="pt-1 font-medium text-gray-700">Score: {(feedback.balancedScore * 100).toFixed(0)}%</div>
+                    <div className="pt-1 font-medium text-slate-200">Score: {(feedback.balancedScore * 100).toFixed(0)}%</div>
                   )}
                 </div>
               )}
@@ -865,7 +920,7 @@ export default function Trainer() {
               <button
                 onClick={pickNext}
                 aria-label="Next hand"
-                className="w-full rounded-xl bg-gray-900 py-3.5 text-base font-bold text-white active:scale-95"
+                className="w-full rounded-xl bg-amber-500 py-3.5 text-base font-bold text-slate-950 active:scale-95"
               >
                 Next →
               </button>
@@ -876,7 +931,7 @@ export default function Trainer() {
 
       {/* Bottom bar — live progress */}
       <div className="flex items-center justify-between py-2">
-        <Link to="/" className="text-xs text-gray-400">← End</Link>
+        <Link to="/" className="text-xs text-slate-400">← End</Link>
         <div className="flex gap-2 text-[10px]">
           <span className="text-red-500">🔴 {problemCount}</span>
           <span className="text-amber-500">🟡 {learningCount}</span>

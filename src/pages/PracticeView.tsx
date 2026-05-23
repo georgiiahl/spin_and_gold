@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import RangeMatrix from '@/components/RangeMatrix';
-import { Spot, SpotRange, normalizeSpotCategory } from '@/domain/types';
+import { Spot, SpotRange, getSpotCategoryLabel, normalizeSpotCategory } from '@/domain/types';
 import { getRange } from '@/storage/ranges';
-import { getSpotsByCategory } from '@/storage/spots';
+import { getAllSpots, getSpotsByCategory } from '@/storage/spots';
 import Card from '@/components/ui/Card';
 
 type SpotWithRange = {
   spot: Spot;
   range: SpotRange;
+};
+
+type PracticeCategory = {
+  name: string;
+  spotCount: number;
 };
 
 export default function PracticeView() {
@@ -17,6 +22,7 @@ export default function PracticeView() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [spotRanges, setSpotRanges] = useState<SpotWithRange[]>([]);
+  const [categories, setCategories] = useState<PracticeCategory[]>([]);
 
   const category = useMemo(
     () => normalizeSpotCategory(categoryFromPath ?? searchParams.get('category') ?? undefined),
@@ -28,6 +34,19 @@ export default function PracticeView() {
 
     async function loadPracticeSpots() {
       if (!category) {
+        setLoading(true);
+        const allSpots = await getAllSpots();
+        if (cancelled) return;
+        const grouped = new Map<string, number>();
+        for (const spot of allSpots) {
+          const categoryName = getSpotCategoryLabel(spot.category);
+          grouped.set(categoryName, (grouped.get(categoryName) ?? 0) + 1);
+        }
+        setCategories(
+          Array.from(grouped.entries())
+            .map(([name, spotCount]) => ({ name, spotCount }))
+            .sort((a, b) => b.spotCount - a.spotCount || a.name.localeCompare(b.name))
+        );
         setSpotRanges([]);
         setLoading(false);
         return;
@@ -43,6 +62,7 @@ export default function PracticeView() {
       const nextSpotRanges = sortedSpots
         .map((spot, index) => ({ spot, range: ranges[index] }))
         .filter((entry): entry is SpotWithRange => Boolean(entry.range));
+      setCategories([]);
       setSpotRanges(nextSpotRanges);
       setLoading(false);
     }
@@ -59,9 +79,42 @@ export default function PracticeView() {
 
   if (!category) {
     return (
-      <div className="mx-auto flex min-h-[40vh] w-full max-w-4xl flex-col items-center justify-center gap-2">
-        <p className="text-red-400">Category not provided.</p>
-        <Link to="/" className="text-sm text-gold-300">Back to dashboard</Link>
+      <div className="mx-auto w-full max-w-4xl space-y-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-100">Practice View</h1>
+          <div className="text-sm text-slate-400">Choose a category to start practice.</div>
+        </div>
+        {categories.length === 0 ? (
+          <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-400">
+            No categories found. Add spots first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {categories.map((entry) => (
+              <Card
+                key={entry.name}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open practice category ${entry.name}`}
+                onClick={() => navigate(`/practice/${encodeURIComponent(entry.name)}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    navigate(`/practice/${encodeURIComponent(entry.name)}`);
+                  }
+                }}
+                className="cursor-pointer"
+                hover
+              >
+                <div className="font-semibold text-slate-100">{entry.name}</div>
+                <div className="text-sm text-slate-400">
+                  {entry.spotCount} spot{entry.spotCount === 1 ? '' : 's'}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+        <Link to="/" className="inline-block text-sm text-gold-300">Back to dashboard</Link>
       </div>
     );
   }
@@ -78,8 +131,8 @@ export default function PracticeView() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <div className="mb-4">
-        <h1 className="text-xl font-bold">Practice View</h1>
-        <div className="text-sm text-gray-500">{category}</div>
+        <h1 className="text-xl font-bold text-slate-100">Practice View</h1>
+        <div className="text-sm text-slate-400">{category}</div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

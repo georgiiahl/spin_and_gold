@@ -122,7 +122,7 @@ export default function Dashboard() {
         <div className="mb-4">
           <div className="mb-2">
             <div className="font-semibold">Choose training category</div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-slate-400">
               Train one spot group at a time instead of mixing unrelated stacks and spots.
             </div>
           </div>
@@ -131,25 +131,25 @@ export default function Dashboard() {
               <Link
                 key={category.name}
                 to={`/train?category=${encodeURIComponent(category.name)}`}
-                className="flex min-h-[56px] flex-col justify-center rounded-lg bg-gradient-to-r from-gold-500 to-amber-400 p-4 text-slate-950 transition hover:brightness-105"
+                className="flex min-h-[56px] flex-col justify-center rounded-lg border border-slate-700 bg-slate-800/60 p-4 text-slate-100 transition hover:bg-slate-800"
                 aria-label={`Train category ${category.name}`}
               >
-                  <div className="font-semibold">{category.name}</div>
-                <div className="mb-2 text-sm text-slate-900/80">
+                <div className="font-semibold text-slate-100">{category.name}</div>
+                <div className="mb-2 text-sm text-slate-400">
                   {category.spotCount} spot{category.spotCount === 1 ? '' : 's'} · {category.dueCards} due card
                   {category.dueCards === 1 ? '' : 's'}
                 </div>
-                <div className="mb-1 flex items-center justify-between text-xs text-slate-900/80">
+                <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
                   <span>Level {category.level}</span>
                   <span>Recent accuracy {category.recentAccuracyPercent}%</span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-900/20">
+                <div className="h-2 rounded-full bg-slate-700">
                   <div
-                    className="h-2 rounded-full bg-emerald-300"
+                    className="h-2 rounded-full bg-amber-400"
                     style={{ width: `${category.maturePercent}%` }}
                   />
                 </div>
-                <div className="mt-1 text-xs text-slate-900/80">{category.maturePercent}% mature cards</div>
+                <div className="mt-1 text-xs text-slate-400">{category.maturePercent}% mature cards</div>
               </Link>
             ))}
           </div>

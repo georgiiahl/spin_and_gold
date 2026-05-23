@@ -142,9 +142,9 @@ export default function ReviewPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h1 className="text-xl font-bold">Review Mode</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+        <h1 className="text-xl font-bold text-slate-100">Review Mode</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Import hand history .txt files and review your preflop decisions.
         </p>
       </div>
@@ -152,34 +152,34 @@ export default function ReviewPage() {
       <div
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
-        className="rounded-lg border border-dashed border-gray-300 bg-white p-4"
+        className="rounded-lg border border-dashed border-slate-600 bg-slate-800/60 p-4"
       >
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">Drop .txt files here or select files manually.</p>
+          <p className="text-sm text-slate-300">Drop .txt files here or select files manually.</p>
           <input
             type="file"
             accept=".txt,text/plain"
             multiple
             onChange={handleFileChange}
-            className="block text-sm text-gray-700 file:mr-2 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-white hover:file:bg-blue-500"
+            className="block text-sm text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-amber-500 file:px-3 file:py-2 file:text-slate-950 hover:file:bg-amber-400"
           />
           <button
             type="button"
             onClick={handleClearImported}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 hover:bg-slate-700"
           >
             Clear imported hands
           </button>
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="font-semibold">Filters</h2>
+      <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+        <h2 className="font-semibold text-slate-100">Filters</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <select
             value={positionFilter}
             onChange={(event) => setPositionFilter(event.target.value as typeof positionFilter)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm"
+            className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-200"
           >
             <option value="all">All positions</option>
             <option value="BTN">BTN</option>
@@ -189,7 +189,7 @@ export default function ReviewPage() {
           <select
             value={spotTypeFilter}
             onChange={(event) => setSpotTypeFilter(event.target.value as typeof spotTypeFilter)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm"
+            className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-200"
           >
             <option value="all">All spot types</option>
             <option value="open">Open</option>
@@ -200,7 +200,7 @@ export default function ReviewPage() {
           <select
             value={formatFilter}
             onChange={(event) => setFormatFilter(event.target.value as typeof formatFilter)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm"
+            className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-200"
           >
             <option value="all">All formats</option>
             <option value="3max">3-max</option>
@@ -209,19 +209,19 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-semibold">Parsed hands</h2>
-          <span className="text-sm text-gray-500">{filteredHands.length}</span>
+          <h2 className="font-semibold text-slate-100">Parsed hands</h2>
+          <span className="text-sm text-slate-400">{filteredHands.length}</span>
         </div>
         {filteredHands.length === 0 ? (
-          <p className="text-sm text-gray-500">No hands to review yet.</p>
+          <p className="text-sm text-slate-400">No hands to review yet.</p>
         ) : (
           <div className="max-h-72 space-y-2 overflow-auto">
             {filteredHands.map(({ recordId, parsed, matched }) => (
-              <div key={recordId} className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+              <div key={recordId} className="rounded-lg border border-slate-700 bg-slate-800 p-2 text-sm text-slate-200">
                 <div>#{parsed.handId} · {matched.actingPosition} · {matched.spotType} · {matched.effectiveStackBb}bb</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-slate-400">
                   {matched.matchedSpotId ? `Matched spot: ${matched.matchedSpotId}` : 'No matching spot'}
                 </div>
               </div>
@@ -232,13 +232,13 @@ export default function ReviewPage() {
           type="button"
           onClick={startReview}
           disabled={filteredHands.length === 0}
-          className="mt-3 w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
+          className="mt-3 w-full rounded-lg bg-amber-500 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:opacity-40"
         >
           Start Review
         </button>
       </div>
 
-      {status && <p className="text-sm text-gray-600">{status}</p>}
+      {status && <p className="text-sm text-slate-300">{status}</p>}
     </div>
   );
 }
