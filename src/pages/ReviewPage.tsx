@@ -1,11 +1,11 @@
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from 'react';
 import ReviewHand, { ReviewHandResult } from '@/components/ReviewHand';
 import ReviewSummary from '@/components/ReviewSummary';
-import { parseGgHandHistories } from '@/domain/hhParser';
 import { buildHandVerdict } from '@/domain/hhReview';
 import { MatchedSpot, matchHandToSpot } from '@/domain/hhSpotMatcher';
 import { Spot, SpotRange } from '@/domain/types';
-import { StoredHandHistory, clearStoredHands, getStoredHands, saveImportedHands } from '@/storage/hhStore';
+import { importHandHistoryText, clearImportedHandHistoryData } from '@/storage/handHistoryImport';
+import { StoredHandHistory, getStoredHands } from '@/storage/hhStore';
 import { getAllRanges } from '@/storage/ranges';
 import { getAllSpots } from '@/storage/spots';
 
@@ -75,10 +75,7 @@ export default function ReviewPage() {
     for (const file of Array.from(fileList)) {
       if (!file.name.toLowerCase().endsWith('.txt')) continue;
       const raw = await file.text();
-      const parsed = parseGgHandHistories(raw);
-      if (parsed.length === 0) continue;
-      await saveImportedHands(file.name, parsed);
-      imported += parsed.length;
+      imported += await importHandHistoryText(file.name, raw);
     }
 
     const stored = await getStoredHands();
@@ -114,7 +111,7 @@ export default function ReviewPage() {
   }
 
   async function handleClearImported() {
-    await clearStoredHands();
+    await clearImportedHandHistoryData();
     setStoredHands([]);
     setStatus('Imported hands cleared.');
     setMode('list');

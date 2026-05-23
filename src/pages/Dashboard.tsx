@@ -203,6 +203,13 @@ export default function Dashboard() {
           <div className="font-semibold">Review Mode</div>
           <div className="text-sm text-gray-500">Import hand history and review decisions</div>
         </Link>
+        <Link
+          to="/chip-ev"
+          className="flex min-h-[56px] flex-col justify-center rounded-lg border border-gray-200 bg-white p-4 transition hover:bg-gray-50"
+        >
+          <div className="font-semibold">ChipEV Stats</div>
+          <div className="text-sm text-gray-500">Track adjusted chips, cEV/t, and bb/100</div>
+        </Link>
       </div>
     </div>
   );
