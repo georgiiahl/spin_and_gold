@@ -140,7 +140,7 @@ export default function DeltaTrainer() {
       queue.push(...buildDeltaDrillQueue(deltas, relevantSessions, anchorRange, targetRange));
     }
 
-    return queue.sort(() => Math.random() - 0.5);
+    return shuffle(queue);
   }, [anchorId, rangesBySpot, sessions, spots]);
 
   const current = drill[index];
@@ -185,7 +185,7 @@ export default function DeltaTrainer() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, current]);
+  }, [phase, current?.hand, current?.targetSpotId]);
 
   async function persistAnswer(params: {
     card: DeltaCard;
@@ -524,4 +524,13 @@ function isTypingElement(target: EventTarget | null): boolean {
   if (target.isContentEditable) return true;
   const tagName = target.tagName;
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }

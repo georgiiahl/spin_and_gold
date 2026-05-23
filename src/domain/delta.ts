@@ -4,6 +4,7 @@ import { Action, HandFrequencies, SessionAnswer, Spot, SpotRange, TrainerCard } 
 
 const ACTIONS: Action[] = ['fold', 'call', 'raise', 'jam'];
 const SAME_RATIO = 0.3;
+const EPSILON = 0.0001;
 
 export type DeltaCard = {
   hand: string;
@@ -44,7 +45,7 @@ function getMedianSpot(spots: Spot[]): Spot {
 
 export function findAnchorSpot(spots: Spot[], cards: TrainerCard[]): Spot {
   if (spots.length === 0) {
-    throw new Error('Cannot find anchor for empty spot list.');
+    throw new Error('Cannot find anchor spot: spot list is empty. Ensure at least one spot is provided.');
   }
 
   const spotIds = new Set(spots.map((spot) => spot.id));
@@ -76,7 +77,8 @@ export function findAnchorSpot(spots: Spot[], cards: TrainerCard[]): Spot {
   });
 
   scored.sort((a, b) => {
-    if (b.masteryPercent !== a.masteryPercent) return b.masteryPercent - a.masteryPercent;
+    const masteryDiff = b.masteryPercent - a.masteryPercent;
+    if (Math.abs(masteryDiff) > EPSILON) return masteryDiff;
     if (b.mastered !== a.mastered) return b.mastered - a.mastered;
     const distanceA = Math.abs(a.spot.effectiveStackBb - medianSpot.effectiveStackBb);
     const distanceB = Math.abs(b.spot.effectiveStackBb - medianSpot.effectiveStackBb);
@@ -127,34 +129,39 @@ export function buildDeltaDrillQueue(
     ALL_HANDS.filter((hand) => isMixed(anchorRange[hand]) || isMixed(targetRange[hand]))
   );
 
-  const score = (delta: DeltaCard): number => {
-    let value = 0;
-    if (depthConfusionHands.has(delta.hand)) value += 100;
-    if (borderHands.has(delta.hand)) value += 10;
-    if (mixedHands.has(delta.hand)) value += 3;
-    value += Math.random();
-    return value;
-  };
+  const different = deltas.filter((delta) => !delta.isSame);
+  const same = deltas.filter((delta) => delta.isSame);
 
-  const different = deltas
-    .filter((delta) => !delta.isSame)
-    .sort((a, b) => score(b) - score(a));
+  const priority1 = different.filter((delta) => depthConfusionHands.has(delta.hand));
+  const priority2 = different.filter((delta) => !depthConfusionHands.has(delta.hand) && borderHands.has(delta.hand));
+  const priority3 = different.filter((delta) =>
+    !depthConfusionHands.has(delta.hand) && !borderHands.has(delta.hand) && mixedHands.has(delta.hand)
+  );
+  const priority4 = different.filter((delta) =>
+    !depthConfusionHands.has(delta.hand) && !borderHands.has(delta.hand) && !mixedHands.has(delta.hand)
+  );
+  const orderedDifferent = [
+    ...priority1,
+    ...priority2,
+    ...priority3,
+    ...shuffle(priority4),
+  ];
 
-  const same = deltas
-    .filter((delta) => delta.isSame)
-    .sort((a, b) => score(b) - score(a));
+  const trickySame = same.filter((delta) => borderHands.has(delta.hand) || mixedHands.has(delta.hand));
+  const trickySameSet = new Set(trickySame);
+  const otherSame = same.filter((delta) => !trickySameSet.has(delta));
 
-  const sameCount = Math.min(same.length, Math.max(0, Math.round(different.length * SAME_RATIO)));
-  const selectedSame = same.slice(0, sameCount);
+  const sameCount = Math.min(same.length, Math.max(0, Math.round(orderedDifferent.length * SAME_RATIO)));
+  const selectedSame = [...trickySame, ...shuffle(otherSame)].slice(0, sameCount);
 
-  if (different.length === 0) return selectedSame;
-  if (selectedSame.length === 0) return different;
+  if (orderedDifferent.length === 0) return selectedSame;
+  if (selectedSame.length === 0) return orderedDifferent;
 
   const result: DeltaCard[] = [];
-  const sameEvery = Math.max(1, Math.round(different.length / selectedSame.length));
+  const sameEvery = Math.max(1, Math.round(orderedDifferent.length / selectedSame.length));
   let sameIndex = 0;
-  for (let i = 0; i < different.length; i += 1) {
-    result.push(different[i]);
+  for (let i = 0; i < orderedDifferent.length; i += 1) {
+    result.push(orderedDifferent[i]);
     const shouldInsertSame = (i + 1) % sameEvery === 0;
     if (shouldInsertSame && sameIndex < selectedSame.length) {
       result.push(selectedSame[sameIndex]);
@@ -167,4 +174,13 @@ export function buildDeltaDrillQueue(
   }
 
   return result;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
