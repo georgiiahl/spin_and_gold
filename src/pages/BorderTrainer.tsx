@@ -108,7 +108,7 @@ export default function BorderTrainer() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [feedback, currentIdx, borderHands, range]);
+  }, [feedback, handleAnswer, next]);
 
   if (!spot) return <div className="text-gray-500">Loading...</div>;
 
