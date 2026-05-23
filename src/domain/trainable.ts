@@ -4,6 +4,7 @@ import { isBorderHand } from '@/domain/border';
 export type TrainableSettings = {
   includeTrashHandsInTraining: boolean;
   focusOnMixedHands: boolean;
+  allowedHands?: Set<string>;
 };
 
 const FREQUENCY_EPSILON = 0.0001;
@@ -38,6 +39,7 @@ export function filterTrainableCards(cards: TrainerCard[], settings: TrainableSe
 }
 
 export function isTrainableCard(card: TrainerCard, settings: TrainableSettings): boolean {
+  if (settings.allowedHands && !settings.allowedHands.has(card.hand)) return false;
   const pureAction = getPureAction(card.frequencies);
 
   if (!settings.focusOnMixedHands) {

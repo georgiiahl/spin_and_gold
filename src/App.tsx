@@ -15,6 +15,7 @@ import ImportExport from '@/pages/ImportExport';
 import Settings from '@/pages/Settings';
 import Forecast from '@/pages/Forecast';
 import ReviewPage from '@/pages/ReviewPage';
+import PracticeView from '@/pages/PracticeView';
 import { getAllSpots } from '@/storage/spots';
 import { seedBundledCharts } from '@/storage/seedBundledCharts';
 import { replaceAllData } from '@/storage/importExport';
@@ -93,6 +94,8 @@ export default function App() {
             <Route path="/study/:id" element={<StudyMode />} />
             <Route path="/train" element={<Trainer />} />
             <Route path="/train/:id" element={<Trainer />} />
+            <Route path="/practice" element={<PracticeView />} />
+            <Route path="/practice/:category" element={<PracticeView />} />
             <Route path="/visual/flash/:id" element={<FlashRange />} />
             <Route path="/visual/missing/:id" element={<MissingCells />} />
             <Route path="/visual/border/:id" element={<BorderTrainer />} />
