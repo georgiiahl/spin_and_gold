@@ -443,7 +443,7 @@ export default function DeltaTrainer() {
       </div>
 
       <div className="flex-1 rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-        <div className="mb-1 text-xs text-gray-500">Base: {anchorSpot.effectiveStackBb}bb</div>
+        <div className="mb-1 text-xs text-gray-500">Base: {anchorSpot.effectiveStackBb}bb — <span className="font-semibold text-gray-700">{ACTION_LABELS[current.anchorAction]}</span></div>
         <div className="mb-4 text-xs text-gray-500">This: {targetSpot.effectiveStackBb}bb</div>
         <div className="mb-6 text-5xl font-bold">{current.hand}</div>
 
